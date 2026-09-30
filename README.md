@@ -70,7 +70,7 @@ brew tap shadyuwugurl/furarcher-asahi
 brew install furarcher-asahi
 ```
 
-Installs `furarcher`, `furfetch`, and `furassistant` + payload (Hyprland conf,
+Installs `furarcher`, `furfetch`, `furassistant`, and `ricer` + payload (Hyprland conf,
 wallpapers, skills, personalities, timers). The full `furarcher` installer
 targets Asahi Fedora; the CLI tools also run on macOS with Ollama installed.
 

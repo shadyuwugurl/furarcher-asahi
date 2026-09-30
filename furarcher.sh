@@ -210,6 +210,10 @@ fi
 if ask "[safe] Install furfetch + SFW neko flavor"; then install_furfetch; fi
 if ask "Install SFW furry wallpapers"; then install_wallpapers_furry_sfw; fi
 if ask "Install icons/themes/kitty bits"; then install_icons_themes_kitty; fi
+if ask "Apply Furarcher rice now (wallpaper + pink theme + kitty + Hyprland colors)"; then
+  run "chmod +x \"$SCRIPT_DIR/bin/ricer\""
+  run "\"$SCRIPT_DIR/bin/ricer\" apply"
+fi
 if ask "Install SFW flatpaks (aarch64-safe)"; then install_flatpaks_sfw; fi
 if ask "Install FurAssistant local AI (Ollama + Hermes, ~5GB)"; then install_furassistant_hook; fi
 if ask "Install FurAssistant voice (Piper TTS + whisper STT, ~500MB + short build)"; then
