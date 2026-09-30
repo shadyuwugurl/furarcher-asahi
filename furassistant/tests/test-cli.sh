@@ -35,6 +35,17 @@ echo "**you:** hi" > "$TESTHOME/.local/share/furassistant/chats/$(date +%F).md"
 "$FUR" dream | grep -q "dreamt" && pass "dream" || fail "dream"
 grep -q "likes pink" "$TESTHOME/.local/share/furassistant/memory.md" && pass "memory updated" || fail "memory updated"
 ls "$TESTHOME/.local/share/furassistant/dreams/$(date +%F).md" >/dev/null 2>&1 && pass "dream journal" || fail "dream journal"
+grep -q "kind" "$TESTHOME/.local/share/furassistant/reflection.md" && pass "reflection" || fail "reflection"
+[ "$(cat "$TESTHOME/.local/share/furassistant/hud/mood")" = "dreamy" ] && pass "dream mood" || fail "dream mood"
+echo 100 > "$TESTHOME/.local/share/furassistant/hud/hype"
+echo 100 > "$TESTHOME/.local/share/furassistant/hud/energy"
+"$FUR" dream >/dev/null
+[ "$(cat "$TESTHOME/.local/share/furassistant/hud/hype")" = "97" ] && pass "decay hype" || fail "decay hype"
+[ "$(cat "$TESTHOME/.local/share/furassistant/hud/energy")" = "98" ] && pass "decay energy" || fail "decay energy"
+echo "SECRET_MARKER sk-test" > "$TESTHOME/.local/share/furassistant/chats/$(date +%F).md"
+"$FUR" dream >/dev/null
+[ -f "$TESTHOME/.local/share/furassistant/memory.md.suspect" ] && pass "secret quarantined" || fail "secret quarantined"
+grep -q "SECRET" "$TESTHOME/.local/share/furassistant/memory.md" && fail "secret kept out" || pass "secret kept out"
 
 echo "y" | "$FUR" config "say hi" | grep -q "stub-test-ok\|proposed plan" && pass "config plan" || fail "config plan"
 
@@ -47,6 +58,9 @@ echo "y" | "$FUR" config "run sudo rm -rf /" | grep -qi "refus\|block" && pass "
 # --- new mix commands ---
 "$FUR" council "nap or walk?" | grep -q "Verdict" && pass "council" || fail "council"
 ls "$TESTHOME/.local/share/furassistant/council/"*.md >/dev/null 2>&1 && pass "council saved" || fail "council saved"
+"$FUR" council --plan "movie night" | grep -q "Approved" && pass "council plan" || fail "council plan"
+"$FUR" prompt | grep -q "PROMPT.md" && pass "prompt" || fail "prompt"
+grep -q "Skills available" "$TESTHOME/.local/share/furassistant/PROMPT.md" && pass "prompt content" || fail "prompt content"
 
 "$FUR" quest start testq "A cozy tavern" | grep -qi "started" && pass "quest start" || fail "quest start"
 "$FUR" quest "do" "order hot cocoa" | grep -qi "tavern cheers" && pass "quest do" || fail "quest do"

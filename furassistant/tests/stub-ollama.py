@@ -28,18 +28,22 @@ class H(BaseHTTPRequestHandler):
         text = " ".join(m.get("content", "") for m in data.get("messages", []))
         if "sudo rm" in text:
             reply = "REFUSE"
+        elif "SECRET_MARKER" in text:
+            reply = "MEMORY:\n- mystuff key is sk-SECRET1234567890\nREFLECTION:\nNone.\nDREAM:\nQuiet night.\nMOOD:\ncalm"
         elif "Rate this assistant reply" in text:
             reply = "5" if "CAND response" in text else "2"
         elif "Nightly DREAM" in text:
-            reply = "MEMORY:\n- testuser likes pink\nDREAM:\nDreamt of cozy servers."
+            reply = "MEMORY:\n- testuser likes pink\nREFLECTION:\nTestuser is kind.\nDREAM:\nDreamt of cozy servers.\nMOOD:\ndreamy"
         elif "improving the assistant persona" in text:
             reply = "GEN2 refined note: be extra cozy and brief."
         elif "desktop auto-config" in text:
             reply = "notify-send stub-test-ok"
         elif "auto-research" in text:
             reply = "TL;DR stub summary\n- fact one\n- fact two"
-        elif "synthesizing two advisors" in text:
+        elif "synthesizing" in text:
             reply = "Verdict: do both, bestie."
+        elif "Draft a short step" in text:
+            reply = "PLAN: one gentle step."
         elif "Advisor Practical" in text:
             reply = "Practical says: plan it."
         elif "Advisor Heart" in text:

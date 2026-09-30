@@ -163,10 +163,16 @@ cmd_dream() { # nightly consolidation
   [ -f "$log" ] || { echo "nothing to dream about today (no chat log)"; exit 0; }
   cp "$MEMORY" "$MEMORY.bak"
   tmp=$(mktemp)
-  build_msgs "Nightly DREAM pass. Today's chats are below. Reply in exactly two sections: 'MEMORY:' (full rewritten bullet list of lasting user facts/preferences, keep old ones still true) then 'DREAM:' (a short 3-5 sentence dream-journal reflection, cozy, SFW)." "$(cat "$log")" "$tmp"
+  build_msgs "Nightly DREAM pass. Today's chats are below. Reply in exactly four sections: 'MEMORY:' (full rewritten bullet list of lasting user facts/preferences, keep old ones still true, fix anything contradicted by newer chats), then 'REFLECTION:' (2-3 sentences: what did you learn about the user or yourself today), then 'DREAM:' (a short 3-5 sentence dream-journal reflection, cozy, SFW), then 'MOOD:' (one lowercase word for tomorrow's mood)." "$(cat "$log")" "$tmp"
   out=$(chat_call "$tmp"); rm -f "$tmp"
-  mem=$(echo "$out" | sed -n '/^MEMORY:/,/^DREAM:/p' | sed '1d;$d')
-  dr=$(echo "$out" | sed -n '/^DREAM:/,$p' | sed '1d')
+  mem=$(echo "$out" | sed -n '/^MEMORY:/,/^REFLECTION:/p' | sed '1d;$d')
+  ref=$(echo "$out" | sed -n '/^REFLECTION:/,/^DREAM:/p' | sed '1d;$d')
+  dr=$(echo "$out" | sed -n '/^DREAM:/,/^MOOD:/p' | sed '1d;$d')
+  mood=$(echo "$out" | sed -n '/^MOOD:/,$p' | sed '1d' | head -1 | grep -oE '^[a-z]{3,20}' || true)
+  if [ -z "$ref" ] && [ -z "$dr" ]; then # legacy 2-section reply fallback
+    mem=$(echo "$out" | sed -n '/^MEMORY:/,/^DREAM:/p' | sed '1d;$d')
+    dr=$(echo "$out" | sed -n '/^DREAM:/,$p' | sed '1d')
+  fi
   # SoW-style self-heal: drop lines contradicting older memory is model's job;
   # here we at least never memorize secrets (ECC AgentShield-lite).
   if [ -n "$mem" ]; then
@@ -179,6 +185,12 @@ cmd_dream() { # nightly consolidation
     fi
   fi
   printf '# Dream %s\n\n%s\n' "$(date)" "${dr:-"(quiet night)"}" > "$DATA/dreams/$(date +%F).md"
+  [ -f "$DATA/reflection.md" ] || echo "# Reflections (dream-learned lessons)" > "$DATA/reflection.md"
+  [ -n "$ref" ] && printf '# Reflection %s\n\n%s\n' "$(date +%F)" "$ref" >> "$DATA/reflection.md"
+  hy=$(cat "$HUD/hype" 2>/dev/null || echo 70); en=$(cat "$HUD/energy" 2>/dev/null || echo 80)
+  echo $(( hy + (70 - hy) / 10 )) > "$HUD/hype"
+  echo $(( en + (80 - en) / 10 )) > "$HUD/energy"
+  [ -n "$mood" ] && echo "$mood" > "$HUD/mood"
   echo "dreamt ^_^ memory updated (backup: memory.md.bak), journal: dreams/$(date +%F).md"
 }
 
@@ -254,16 +266,49 @@ cmd_skill() { # skill <name> "input"  (DeepBot/ECC SKILL.md packs)
 
 cmd_memory() { # memory [search]  (N.E.K.O memory browser)
   if [ $# -eq 0 ]; then
-    echo "=== memory ==="; cat "$MEMORY"; echo; echo "=== diary (tail) ==="; tail -n 15 "$DIARY"
+    echo "=== memory ==="; cat "$MEMORY"; echo; echo "=== reflection (tail) ==="; tail -n 10 "$DATA/reflection.md" 2>/dev/null || true
+    echo; echo "=== diary (tail) ==="; tail -n 15 "$DIARY"
   else
-    grep -rni -- "$*" "$DATA/memory.md" "$DATA/diary.md" "$DATA/dreams" "$DATA/chats" 2>/dev/null | head -n 30
+    grep -rni -- "$*" "$DATA/memory.md" "$DATA/reflection.md" "$DATA/diary.md" "$DATA/dreams" "$DATA/chats" 2>/dev/null | head -n 30
   fi
 }
 
-cmd_council() { # council "question" (AgentSociety micro-sim: 2 advisors + verdict)
+cmd_prompt() { # prompt (DeepBot-style assembled prompt transparency)
+  python3 - "$PERSONA" "$MEMORY" "$SKILLDIR" <<'PYEOF' > "$DATA/PROMPT.md"
+import json, os, sys, glob
+persona = open(sys.argv[1]).read()[:2000]
+memory = open(sys.argv[2]).read()[:4000]
+skills = sorted(os.path.basename(os.path.dirname(p)) for p in glob.glob(os.path.join(sys.argv[3], "*", "SKILL.md")))
+print("# Assembled system prompt (AGENT base + persona + memory + skills)\n")
+print("You are Paws, a SFW-only (16+ safe, never sexual/erotic) furry companion on Asahi Linux.")
+print("Be warm, brief, helpful.\n")
+print("## Refinements (persona.md)\n" + persona + "\n")
+print("## Memory (memory.md)\n" + memory + "\n")
+print("## Skills available: " + (", ".join(skills) if skills else "(none installed)") + "\n")
+PYEOF
+  echo "assembled: $DATA/PROMPT.md"
+}
+
+cmd_council() { # council [--plan] "question" (AgentSociety micro-sim)
   need_ollama
+  mode="debate"
+  if [ "${1:-}" = "--plan" ]; then mode="plan"; shift; fi
   q="$*"
   tmp=$(mktemp)
+  if [ "$mode" = "plan" ]; then
+    build_msgs "Draft a short step-by-step plan (max 5 steps) for the request below. Plain and practical." "$q" "$tmp"
+    plan=$(chat_call "$tmp")
+    build_msgs "You are Advisor Practical. Critique this plan in 2 lines: biggest risk?" "Plan: $plan" "$tmp"
+    a=$(chat_call "$tmp")
+    build_msgs "You are Advisor Heart. Critique this plan in 2 lines: how does it feel?" "Plan: $plan" "$tmp"
+    b=$(chat_call "$tmp")
+    build_msgs "You are Paws synthesizing a plan and two critiques into a final approved plan. Be brief, kind, decisive." \
+      "Request: $q\n\nDraft plan: $plan\n\nPractical critique: $a\n\nHeart critique: $b" "$tmp"
+    v=$(chat_call "$tmp"); rm -f "$tmp"
+    out="$DATA/council/$(date +%F-%H%M).md"
+    { echo "# Council plan: $q"; echo; echo "## Draft"; echo "$plan"; echo; echo "## Critiques"; echo "$a"; echo; echo "$b"; echo; echo "## Approved"; echo "$v"; } | tee "$out"
+    return 0
+  fi
   build_msgs "You are Advisor Practical (blunt, logistics-brained). Answer briefly." "$q" "$tmp"
   a=$(chat_call "$tmp")
   build_msgs "You are Advisor Heart (warm, feelings-first, SFW). Answer briefly." "$q" "$tmp"
@@ -403,7 +448,8 @@ case "${1:-help}" in
   config) shift; [ $# -eq 0 ] && { echo 'usage: furassistant config "request"'; exit 1; }; cmd_config "$*" ;;
   skill) shift; [ $# -eq 0 ] && { ls "$SKILLDIR"; exit 0; }; cmd_skill "$@" ;;
   memory) shift; cmd_memory "$@" ;;
-  council) shift; [ $# -eq 0 ] && { echo 'usage: furassistant council "question"'; exit 1; }; cmd_council "$*" ;;
+  council) shift; [ $# -eq 0 ] && { echo 'usage: furassistant council [--plan] "question"'; exit 1; }; cmd_council "$@" ;;
+  prompt) cmd_prompt ;;
   quest) shift; cmd_quest "$@" ;;
   ldr) cmd_ldr ;;
   sk) shift; cmd_sk "$@" ;;
@@ -411,5 +457,5 @@ case "${1:-help}" in
   listen) shift; cmd_listen "$@" ;;
   checkin) cmd_checkin ;;
   status) cmd_status ;;
-  *) echo "furassistant - local Hermes SFW companion ^_^"; echo "usage: furassistant {chat|ask|research|dream|rsi|config|skill|memory|council|quest|ldr|sk|speak|listen|checkin|status} ..." ;;
+  *) echo "furassistant - local Hermes SFW companion ^_^"; echo "usage: furassistant {chat|ask|research|dream|rsi|config|skill|memory|prompt|council|quest|ldr|sk|speak|listen|checkin|status} ..." ;;
 esac

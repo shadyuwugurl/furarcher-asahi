@@ -27,11 +27,12 @@ chmod +x install-furassistant.sh
 | `furassistant chat` | REPL with Paws, logged to `~/.local/share/furassistant/chats/` | NyarchAssistant |
 | `furassistant ask "..."` | one-shot answer | NyarchAssistant |
 | `furassistant research <topic> [URL...]` | fetches pages, model summarizes → report in `research/` | NyarchAssistant web + DeepBot fetch |
-| `furassistant dream` | nightly consolidation → `memory.md` + `dreams/` journal (systemd timer 03:00), with secret-scan + contradiction care | N.E.K.O 5-dim memory, SoW self-healing diary, ECC shield |
+| `furassistant dream` | nightly consolidation → `memory.md` + `reflection.md` + `dreams/` journal (systemd timer 03:00), with secret-scan + contradiction care + overnight mood decay | N.E.K.O memory, SoW self-healing diary + decay, ECC shield |
 | `furassistant rsi [--iters N]` | bounded Recursive Self-Improvement of `persona.md` only, judge-gated, backups kept | ECC improve-loop |
 | `furassistant config "..."` | proposes user-scope shell plan, 10s fail-safe countdown, runs only on confirm | NyarchAssistant terminal + SoW approval banner |
 | `furassistant skill <name> "..."` | SKILL.md prompt packs (`ldr-call-plan`, `cozy-story`, `ricer`) | DeepBot + ECC skills |
-| `furassistant council "..."` | 2-advisor debate (Practical + Heart) + Paws verdict, saved | AgentSociety micro-sim |
+| `furassistant council [--plan] "..."` | 2-advisor debate (Practical + Heart) + Paws verdict, saved; `--plan` = draft→critique→approve | AgentSociety debate + Plan-Execute |
+| `furassistant prompt` | writes the fully assembled system prompt to `PROMPT.md` (base + persona + memory + skills) | DeepBot prompt assembly |
 | `furassistant quest ...` | cozy dice RPG with Hermes GM — made for LDR co-op calls | Soul-of-Waifu Stage-lite |
 | `furassistant ldr` | SK↔US time bridge, overlap windows, visit countdown | (for him + his bf <3) |
 | `furassistant sk [word]` | Slovak mini-phrasebook (SFW love + furry words) | (for the American bf) |
