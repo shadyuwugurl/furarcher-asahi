@@ -2,7 +2,9 @@
 # ricer - Furarcher desktop ricing for Asahi (GNOME + Hyprland). No sudo, ~/.local only.
 #   ricer apply [IMAGE]      full rice: wallpaper + theme + kitty + hypr colors
 #   ricer wallpaper <img>    set wallpaper (GNOME gsettings + Hyprland if present)
-#   ricer theme <name>       apply palette: pink | purple | ocean  (writes kitty + hypr + wal if present)
+#   ricer theme <name>       apply palette: pink | purple | ocean | trans | rainbow | bi
+#   ricer find <query> [n]  auto-search SFW wallpapers (wallhaven purity=100 + nekos.best)
+#   ricer get <n> [--apply[=theme]]  download result n (and optionally apply it)
 #   ricer status             show current rice state
 # Flags: --dry-run, --yes
 set -u
@@ -11,6 +13,9 @@ ROOT="${FURARCHER_ROOT:-$(cd "$(dirname "$0")/.." && pwd)}"
 BGDIR="$HOME/.local/share/backgrounds"
 KYDIR="$HOME/.config/kitty"
 HYDIR="$HOME/.config/hypr"
+RCACHE="$HOME/.local/share/furarcher"
+WH_BASE="${WALLHAVEN_BASE:-https://wallhaven.cc}"
+NB_BASE="${NEKOS_BASE:-https://nekos.best}"
 DRY="false"
 for a in "$@"; do case "$a" in --dry-run) DRY="true";; esac; done
 run() { if [ "$DRY" = "true" ]; then echo "[dry-run] $*"; else eval "$*"; fi; }
@@ -20,7 +25,10 @@ palette() { # palette <name> -> "bg fg accent accent2"
     pink)   echo "1a0e1a f5d5ec ff7ad9 ff9ecf" ;;
     purple) echo "120e1e e2d5ff b28dff d0b3ff" ;;
     ocean)  echo "0b1620 d5ecf5 7ad9ff a3e4ff" ;;
-    *) echo "unknown theme: $1 (pink|purple|ocean)" >&2; return 1 ;;
+    trans)  echo "141821 f5f5f5 5bcffa f5a9b8" ;;
+    rainbow) echo "141414 f5f5f5 fe0000 8cff00" ;;
+    bi)     echo "161020 f5d5ec d60270 0038a8" ;;
+    *) echo "unknown theme: $1 (pink|purple|ocean|trans|rainbow|bi)" >&2; return 1 ;;
   esac
 }
 
@@ -81,6 +89,61 @@ cmd_status() {
   echo "wal: $(command -v wal 2>/dev/null || echo '(not installed)')"
 }
 
+# Auto-search SFW wallpapers. wallhaven (purity=100 SFW-only) + nekos.best (SFW neko).
+cmd_find() { # find <query> [count]
+  command -v python3 >/dev/null || { echo "need python3"; return 1; }
+  q="$1"; n="${2:-6}"
+  mkdir -p "$RCACHE"
+  echo "searching SFW wallpapers for '$q' (wallhaven purity=100)..."
+  wh=$(curl -fsSL --max-time 25 "$WH_BASE/api/v1/search?q=$(python3 -c "import urllib.parse,sys; print(urllib.parse.quote(sys.argv[1]))" "$q")&purity=100&sorting=toplist&page=1" 2>/dev/null || echo "")
+  nb=""
+  case "$q" in *[Nn]eko*|*cat*|*kitten*) echo "also checking nekos.best (SFW neko)...";
+    nb=$(curl -fsSL --max-time 25 "$NB_BASE/api/v2/neko?amount=$n" 2>/dev/null || echo "") ;;
+  esac
+  WH_JSON="$wh" NB_JSON="$nb" N="$n" Q="$q" python3 - "$RCACHE/find.json" <<'PYEOF'
+import json, os, sys
+out = sys.argv[1]
+res = []
+try:
+    d = json.loads(os.environ["WH_JSON"] or "{}")
+    for x in d.get("data", [])[:int(os.environ["N"])]:
+        res.append({"src": "wallhaven", "id": x.get("id"),
+                    "url": x.get("path"), "dims": f"{x.get('dimension_x')}x{x.get('dimension_y')}",
+                    "credit": "wallhaven.cc/" + str(x.get("id", ""))})
+except Exception:
+    pass
+try:
+    d = json.loads(os.environ["NB_JSON"] or "{}")
+    for x in d.get("results", [])[:int(os.environ["N"])]:
+        res.append({"src": "nekos.best", "id": x.get("url", "").split("/")[-1][:12],
+                    "url": x.get("url"), "dims": f"{x.get('dimensions', {}).get('width')}x{x.get('dimensions', {}).get('height')}",
+                    "credit": x.get("artist_name", "unknown") + " via " + x.get("source_url", "")})
+except Exception:
+    pass
+json.dump({"query": os.environ["Q"], "results": res}, open(out, "w"), indent=1)
+print(f"found {len(res)} SFW results for '{os.environ['Q']}':")
+for i, r in enumerate(res, 1):
+    print(f"  [{i}] {r['src']} {r['dims']} {r['credit']}\n      {r['url']}")
+if not res:
+    print("no results - try: fox, wolf, anime, neko, pastel")
+PYEOF
+}
+
+cmd_get() { # get <n> [--apply[=theme]]
+  [ -f "$RCACHE/find.json" ] || { echo "run 'ricer find <query>' first"; return 1; }
+  apply=""; theme="pink"
+  for a in "$@"; do case "$a" in --apply) apply=1;; --apply=*) apply=1; theme="${a#--apply=}";; esac; done
+  idx="$1"
+  url=$(python3 -c "import json,sys; print(json.load(open('$RCACHE/find.json'))['results'][int(sys.argv[1])-1]['url'])" "$idx" 2>/dev/null) \
+    || { echo "no result #$idx - run 'ricer find' again"; return 1; }
+  mkdir -p "$BGDIR"
+  base=$(basename "${url%%\?*}")
+  echo "downloading #$idx -> $BGDIR/$base"
+  curl -fsSL --max-time 60 -o "$BGDIR/$base" "$url" || { echo "download failed"; return 1; }
+  echo "saved: $BGDIR/$base"
+  if [ -n "$apply" ]; then do_wallpaper "$BGDIR/$base" && do_theme "$theme"; fi
+}
+
 case "${1:-status}" in
   apply)
     img="${2:-$ROOT/wallpapers/fur-pride-2560x1664.svg}"
@@ -92,7 +155,9 @@ case "${1:-status}" in
     echo "riced ^_^ ($theme)"
     ;;
   wallpaper) shift; [ $# -ge 1 ] || { echo 'usage: ricer wallpaper <image>'; exit 1; }; do_wallpaper "$1" ;;
-  theme) shift; [ $# -ge 1 ] || { echo 'usage: ricer theme <pink|purple|ocean>'; exit 1; }; do_theme "$1" ;;
+  theme) shift; [ $# -ge 1 ] || { echo 'usage: ricer theme <pink|purple|ocean|trans|rainbow|bi>'; exit 1; }; do_theme "$1" ;;
+  find) shift; [ $# -ge 1 ] || { echo 'usage: ricer find <query> [count]'; exit 1; }; cmd_find "$@" ;;
+  "get") shift; [ $# -ge 1 ] || { echo 'usage: ricer get <n> [--apply[=theme]]'; exit 1; }; cmd_get "$@" ;;
   status) cmd_status ;;
-  *) echo "usage: ricer {apply [IMAGE] [theme]|wallpaper|theme|status} [--dry-run]"; exit 1 ;;
+  *) echo "usage: ricer {apply [IMAGE] [theme]|wallpaper|theme|find|get|status} [--dry-run]"; exit 1 ;;
 esac
