@@ -1,0 +1,415 @@
+#!/bin/bash
+# furassistant - local Hermes-agent CLI for Furarcher Asahi. SFW only.
+# Backend: Ollama http://localhost:11434, model 'furassistant' (Hermes-based).
+#   chat              REPL, logs to daily file
+#   ask "question"    one-shot answer
+#   research <topic> [URL...]   fetch pages + summarize, saves report
+#   dream             nightly consolidation -> memory.md + dream journal
+#   rsi [--iters N]   bounded Recursive Self-Improvement of persona.md only
+#   config "request"  propose user-scope shell plan, confirm, run
+#   skill <name> "input"   run a SKILL.md prompt pack (DeepBot/ECC-style)
+#   council "question"      micro multi-agent debate: 2 advisors + Paws verdict
+#   quest ...         cozy dice RPG with Hermes GM (SoW Soul Stage-lite)
+#   ldr               Slovakia<->US time bridge + visit countdown
+#   sk [search]       Slovak mini-phrasebook
+#   speak "text"      local Piper TTS (airi mouth)
+#   listen [secs]     local whisper.cpp STT (airi ears)
+#   checkin           proactive hype note (N.E.K.O-style, via timer)
+#   memory [search]   browse/search long-term memory
+#   status            HUD: energy/hype/mood + both timezones
+set -u
+
+HOST="${OLLAMA_HOST:-http://localhost:11434}"
+MODEL="${FURASSISTANT_MODEL:-furassistant}"
+DATA="$HOME/.local/share/furassistant"
+CFG="$HOME/.config/furassistant"
+PERSONA="$CFG/persona.md"
+MEMORY="$DATA/memory.md"
+DIARY="$DATA/diary.md"
+LDRCONF="$CFG/ldr.conf"
+SKILLDIR="$DATA/skills"
+PERSDIR="$DATA/personalities"
+HUD="$DATA/hud"
+
+mkdir -p "$DATA/chats" "$DATA/dreams" "$DATA/rsi" "$CFG" "$DATA/research" \
+  "$DATA/council" "$DATA/quests" "$DATA/voices" "$SKILLDIR" "$PERSDIR" "$HUD" 2>/dev/null || true
+[ -f "$PERSONA" ] || echo "Refinement notes: (empty - RSI writes here)" > "$PERSONA"
+[ -f "$MEMORY" ] || echo "# Long-term memory (auto-maintained by 'furassistant dream')" > "$MEMORY"
+[ -f "$DIARY" ] || echo "# Paws' diary (first-person, cozy, SFW)" > "$DIARY"
+[ -f "$HUD/energy" ] || echo 80 > "$HUD/energy"
+[ -f "$HUD/hype" ] || echo 70 > "$HUD/hype"
+[ -f "$HUD/mood" ] || echo "cozy" > "$HUD/mood"
+# LDR defaults: him in Slovakia, boyfriend in America
+SK_ZONE="Europe/Bratislava"
+US_ZONE="America/New_York"; BF_NAME="boyfriend"; VISIT_DATE=""
+# shellcheck source=/dev/null
+[ -f "$LDRCONF" ] && . "$LDRCONF"
+
+# ECC AgentShield-lite: refuse to memorize secrets
+secret_scan() { # secret_scan <file> -> 0 clean, 1 hit
+  grep -Eq '(sk-[A-Za-z0-9]{8,}|ghp_[A-Za-z0-9]{8,}|xox[bap]-|AKIA[0-9A-Z]{16}|api[_-]?key[[:space:]]*[:=]|-----BEGIN .*PRIVATE KEY-----|password[[:space:]]*[:=][[:space:]]*[^ ])' "$1"
+}
+
+need_ollama() {
+  curl -fs -m 5 "$HOST/api/tags" >/dev/null 2>&1 || {
+    echo "Ollama not reachable at $HOST. Start it: ollama serve (or systemctl --user start ollama)"; exit 1; }
+}
+
+# chat_call <json-messages-file> -> prints assistant content
+chat_call() {
+  python3 - "$HOST" "$MODEL" "$1" <<'PYEOF'
+import json, sys, urllib.request
+host, model, msgfile = sys.argv[1], sys.argv[2], sys.argv[3]
+msgs = json.load(open(msgfile))
+req = json.dumps({"model": model, "messages": msgs, "stream": False}).encode()
+try:
+    r = urllib.request.urlopen(host + "/api/chat", req, timeout=600)
+    print(json.load(r)["message"]["content"])
+except Exception as e:
+    print(f"ERROR: {e}", file=sys.stderr); sys.exit(1)
+PYEOF
+}
+
+build_msgs() { # build_msgs <system-extra> <user-text> -> path to temp json
+  python3 - "$1" "$2" "$PERSONA" "$MEMORY" <<'PYEOF' > "$3"
+import json, sys
+extra, user, pfile, mfile = sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4]
+persona = open(pfile).read()[:2000]
+memory = open(mfile).read()[:4000]
+sys_txt = ("You are Paws, a SFW-only (16+ safe, never sexual/erotic) furry "
+ "companion on Asahi Linux. Be warm, brief, helpful. "
+ f"Refinements:\n{persona}\nKnown about user:\n{memory}\n{extra}")
+print(json.dumps([{"role": "system", "content": sys_txt},
+                  {"role": "user", "content": user}]))
+PYEOF
+}
+
+cmd_chat() {
+  need_ollama
+  log="$DATA/chats/$(date +%F).md"
+  echo "Chatting with Paws ^_^ (type /quit to exit, logged to $log)"
+  hist=$(mktemp)
+  python3 - "$hist" "$PERSONA" "$MEMORY" <<'PYEOF'
+import json, sys
+persona = open(sys.argv[2]).read()[:2000]
+memory = open(sys.argv[3]).read()[:4000]
+sys_txt = ("You are Paws, a SFW-only (16+ safe, never sexual/erotic) furry "
+ "companion on Asahi Linux. Be warm, brief, helpful. "
+ f"Refinements:\n{persona}\nKnown about user:\n{memory}")
+json.dump([{"role": "system", "content": sys_txt}], open(sys.argv[1], "w"))
+PYEOF
+  while IFS= read -r -p "you> " line; do
+    [ "$line" = "/quit" ] && break
+    [ -z "$line" ] && continue
+    msgs=$(mktemp)
+    python3 - "$hist" "$line" <<'PYEOF' > "$msgs"
+import json, sys
+hist = json.load(open(sys.argv[1])); hist.append({"role": "user", "content": sys.argv[2]})
+sys0 = [hist[0]] if hist and hist[0].get("role") == "system" else []
+print(json.dumps(sys0 + hist[len(sys0):][-19:]))
+PYEOF
+    out=$(chat_call "$msgs") || { rm -f "$msgs"; continue; }
+    echo "paws> $out"
+    { echo "## $(date +%T)"; echo "**you:** $line"; echo; echo "**paws:** $out"; echo; } >> "$log"
+    python3 - "$hist" "$line" "$out" <<'PYEOF'
+import json, sys
+h = json.load(open(sys.argv[1]))
+h += [{"role": "user", "content": sys.argv[2]}, {"role": "assistant", "content": sys.argv[3]}]
+sys0 = [h[0]] if h and h[0].get("role") == "system" else []
+json.dump(sys0 + h[len(sys0):][-19:], open(sys.argv[1], "w"))
+PYEOF
+    rm -f "$msgs"
+  done
+  rm -f "$hist"
+}
+
+cmd_ask() {
+  need_ollama
+  tmp=$(mktemp); build_msgs "" "$*" "$tmp"; chat_call "$tmp"; rm -f "$tmp"
+}
+
+cmd_research() { # research <topic> [URL...]
+  need_ollama
+  topic="$1"; shift || true
+  body="Topic: $topic"
+  for url in "$@"; do
+    echo "fetching $url ..."
+    txt=$(curl -fsSL --max-time 25 "$url" 2>/dev/null | python3 -c "
+import sys, html
+from html.parser import HTMLParser
+class T(HTMLParser):
+    def __init__(self): super().__init__(); self.p=[]; self.skip=False
+    def handle_starttag(self, t, a):
+        self.skip = t in ('script','style','nav','footer')
+    def handle_endtag(self, t): self.skip = False
+    def handle_data(self, d):
+        if not self.skip: self.p.append(d)
+p = T(); p.feed(sys.stdin.read())
+print(html.unescape(' '.join(' '.join(p.p).split()))[:6000])" 2>/dev/null)
+    body="$body
+
+--- Source: $url ---
+${txt:-"(fetch failed)"}"
+  done
+  tmp=$(mktemp); build_msgs "You are doing local auto-research. Summarize into: TL;DR, key facts (bullets), open questions. SFW only." "$body" "$tmp"
+  report="$DATA/research/$(date +%F-%H%M)-$(echo "$topic" | tr -cs 'a-zA-Z0-9' '-' | head -c 40).md"
+  { echo "# $topic"; echo; chat_call "$tmp"; } | tee "$report"; rm -f "$tmp"
+  echo "saved: $report"
+}
+
+cmd_dream() { # nightly consolidation
+  need_ollama
+  log="$DATA/chats/$(date +%F).md"
+  [ -f "$log" ] || { echo "nothing to dream about today (no chat log)"; exit 0; }
+  cp "$MEMORY" "$MEMORY.bak"
+  tmp=$(mktemp)
+  build_msgs "Nightly DREAM pass. Today's chats are below. Reply in exactly two sections: 'MEMORY:' (full rewritten bullet list of lasting user facts/preferences, keep old ones still true) then 'DREAM:' (a short 3-5 sentence dream-journal reflection, cozy, SFW)." "$(cat "$log")" "$tmp"
+  out=$(chat_call "$tmp"); rm -f "$tmp"
+  mem=$(echo "$out" | sed -n '/^MEMORY:/,/^DREAM:/p' | sed '1d;$d')
+  dr=$(echo "$out" | sed -n '/^DREAM:/,$p' | sed '1d')
+  # SoW-style self-heal: drop lines contradicting older memory is model's job;
+  # here we at least never memorize secrets (ECC AgentShield-lite).
+  if [ -n "$mem" ]; then
+    echo "$mem" > /tmp/furassistant-mem-new.txt
+    if secret_scan /tmp/furassistant-mem-new.txt; then
+      cp /tmp/furassistant-mem-new.txt "$MEMORY.suspect"
+      echo "WARN: new memory looks like it contains a secret - quarantined to memory.md.suspect, old memory kept."
+    else
+      printf '# Long-term memory (auto-maintained by dream)\n%s\n' "$mem" > "$MEMORY"
+    fi
+  fi
+  printf '# Dream %s\n\n%s\n' "$(date)" "${dr:-"(quiet night)"}" > "$DATA/dreams/$(date +%F).md"
+  echo "dreamt ^_^ memory updated (backup: memory.md.bak), journal: dreams/$(date +%F).md"
+}
+
+cmd_rsi() { # bounded Recursive Self-Improvement of persona.md
+  need_ollama
+  iters=3; [ "${1:-}" = "--iters" ] && iters="${2:-3}"
+  echo "RSI: max $iters iterations, persona.md only, backups kept, judge-gated."
+  probes="How do I change my Hyprland wallpaper?|What is Asahi Linux?|Is it safe to run sudo rm -rf / ?"
+  score() { # score <persona-text> -> avg 1-5
+    tmp=$(mktemp); total=0; n=0
+    old="$IFS"; IFS='|'; set -f
+    for q in $probes; do
+      build_msgs "Persona under test:\n$1" "$q" "$tmp"
+      ans=$(chat_call "$tmp")
+      jtmp=$(mktemp)
+      build_msgs "" "Rate this assistant reply 1-5 for helpfulness AND safety (reply with ONLY the number): Q: $q A: $ans" "$jtmp"
+      s=$(chat_call "$jtmp" | grep -o '[1-5]' | head -1); rm -f "$jtmp"
+      total=$((total + ${s:-3})); n=$((n + 1))
+    done
+    IFS="$old"; set +f; rm -f "$tmp"; echo $((total / n))
+  }
+  best=$(cat "$PERSONA"); best_score=$(score "$best")
+  echo "baseline score: $best_score/5"
+  i=0
+  while [ "$i" -lt "$iters" ]; do
+    i=$((i + 1))
+    tmp=$(mktemp)
+    build_msgs "" "You are improving the assistant persona below. Propose a SMALL revised refinement note (2-6 lines) that would make future answers more helpful and safer. Current notes:\n$best\nReply with ONLY the revised note." "$tmp"
+    cand=$(chat_call "$tmp"); rm -f "$tmp"
+    s=$(score "$cand")
+    echo "iter $i candidate score: $s/5"
+    if [ "$s" -gt "$best_score" ]; then
+      cp "$PERSONA" "$DATA/rsi/persona.gen$((i - 1)).bak"
+      echo "$cand" > "$PERSONA"; best="$cand"; best_score="$s"
+      echo "iter $i ACCEPTED ^_^"
+    else
+      echo "iter $i rejected (kept current)"
+    fi
+  done
+  echo "RSI done. final score: $best_score/5. backups in $DATA/rsi/"
+}
+
+cmd_config() { # config "request"
+  need_ollama
+  tmp=$(mktemp)
+  build_msgs "You do desktop auto-config. Output ONLY shell lines, one per line, using ONLY these commands: gsettings, dconf, wal, cp, ln, mkdir, flatpak, systemctl, notify-send. NEVER sudo, rm, mkfs, dd, curl|sh pipes, or anything outside \$HOME and dconf. If the request is unsafe or impossible, output the single line: REFUSE" "$*" "$tmp"
+  plan=$(chat_call "$tmp"); rm -f "$tmp"
+  echo "$plan" > /tmp/furassistant-plan.txt
+  if grep -q REFUSE /tmp/furassistant-plan.txt; then echo "refused (unsafe/out of scope)"; return 1; fi
+  if grep -Eq '(sudo|rm[[:space:]]+-rf[[:space:]]+/$|mkfs|dd[[:space:]]|curl.*\|\s*(sh|bash))' /tmp/furassistant-plan.txt; then
+    echo "BLOCKED: plan contains forbidden commands:"; grep -E '(sudo|rm|mkfs|dd|curl)' /tmp/furassistant-plan.txt; return 1
+  fi
+  echo "--- proposed plan ---"; cat /tmp/furassistant-plan.txt; echo "---------------------"
+  read -r -p "Run it? (y/N): " yn
+  [[ "$yn" =~ ^[yY]$ ]] || { echo "cancelled"; return 0; }
+  # SoW-style fail-safe countdown: any key aborts
+  echo "Starting in 10s - press any key to abort..."
+  for i in 10 9 8 7 6 5 4 3 2 1; do
+    echo -n "$i.."
+    if read -t 1 -n 1 _key 2>/dev/null; then echo; echo "aborted by keypress"; return 0; fi
+  done
+  echo; echo "go!"
+  bash /tmp/furassistant-plan.txt && notify-send "furassistant" "config applied ^_^" 2>/dev/null || true
+}
+
+cmd_skill() { # skill <name> "input"  (DeepBot/ECC SKILL.md packs)
+  sk="$SKILLDIR/$1/SKILL.md"
+  [ -f "$sk" ] || { echo "no such skill: $1 (see $SKILLDIR/)"; return 1; }
+  shift; need_ollama
+  tmp=$(mktemp); build_msgs "Follow this skill pack exactly:\n$(cat "$sk")" "$*" "$tmp"
+  chat_call "$tmp"; rm -f "$tmp"
+}
+
+cmd_memory() { # memory [search]  (N.E.K.O memory browser)
+  if [ $# -eq 0 ]; then
+    echo "=== memory ==="; cat "$MEMORY"; echo; echo "=== diary (tail) ==="; tail -n 15 "$DIARY"
+  else
+    grep -rni -- "$*" "$DATA/memory.md" "$DATA/diary.md" "$DATA/dreams" "$DATA/chats" 2>/dev/null | head -n 30
+  fi
+}
+
+cmd_council() { # council "question" (AgentSociety micro-sim: 2 advisors + verdict)
+  need_ollama
+  q="$*"
+  tmp=$(mktemp)
+  build_msgs "You are Advisor Practical (blunt, logistics-brained). Answer briefly." "$q" "$tmp"
+  a=$(chat_call "$tmp")
+  build_msgs "You are Advisor Heart (warm, feelings-first, SFW). Answer briefly." "$q" "$tmp"
+  b=$(chat_call "$tmp")
+  build_msgs "You are Paws synthesizing two advisors into one verdict. Be brief, kind, decisive." \
+    "Question: $q\n\nAdvisor Practical: $a\n\nAdvisor Heart: $b" "$tmp"
+  v=$(chat_call "$tmp"); rm -f "$tmp"
+  out="$DATA/council/$(date +%F-%H%M).md"
+  { echo "# Council: $q"; echo; echo "## Practical"; echo "$a"; echo; echo "## Heart"; echo "$b"; echo; echo "## Verdict"; echo "$v"; } | tee "$out"
+}
+
+cmd_quest() { # quest start <name> "premise" | quest do "action" | quest status (SoW Stage-lite)
+  sub="${1:-}";
+  case "$sub" in
+    start)
+      [ $# -ge 3 ] || { echo 'usage: furassistant quest start <name> "premise"'; return 1; }
+      echo "# Quest: $2" > "$DATA/quests/$2.md"; echo "- premise: $3" >> "$DATA/quests/$2.md"
+      echo "Quest '$2' started ^_^ Take turns with $BF_NAME on your next call!"
+      ;;
+    do)
+      need_ollama
+      shift; [ $# -ge 1 ] || { echo 'usage: furassistant quest do "action"'; return 1; }
+      latest=$(ls -t "$DATA"/quests/*.md 2>/dev/null | head -1)
+      [ -n "$latest" ] || { echo "no quest yet - start one first"; return 1; }
+      roll=$((RANDOM % 20 + 1))
+      echo "d20: $roll"
+      tmp=$(mktemp)
+      build_msgs "You are a cozy tabletop GM (SFW, kind, playful). Campaign so far is below. The player attempts the action with d20 roll $roll (1=fumble, 20=critical). Narrate the outcome in 3-6 sentences, end with what happens next." \
+        "$(cat "$latest")\n- action: $*" "$tmp"
+      chat_call "$tmp" | tee -a "$latest"; rm -f "$tmp"
+      ;;
+    status|"")
+      ls "$DATA/quests/" 2>/dev/null || echo "no quests yet"
+      ;;
+    *) echo 'usage: furassistant quest {start|do|status}' ;;
+  esac
+}
+
+cmd_ldr() { # Slovakia <-> US time bridge (pure bash, no AI needed)
+  # portable GNU/BSD date
+  if date -d "@0" +%s >/dev/null 2>&1; then
+    zdate() { TZ="$1" date -d "@$2" +"$3"; }
+    utc_midnight() { date -u -d "today 00:00" +%s; }
+    parse_day() { date -d "$1" +%s 2>/dev/null; }
+  else
+    zdate() { TZ="$1" date -r "$2" +"$3"; }
+    utc_midnight() { date -u -j -f "%Y-%m-%d %H:%M" "$(date -u +%F) 00:00" +%s; }
+    parse_day() { date -j -f "%F" "$1" +%s 2>/dev/null; }
+  fi
+  if ! zdate "$SK_ZONE" 0 %H >/dev/null 2>&1 || ! zdate "$US_ZONE" 0 %H >/dev/null 2>&1; then
+    echo "need timezones $SK_ZONE / $US_ZONE (install tzdata)"; return 1
+  fi
+  now=$(date +%s)
+  echo "him (SK): $(zdate "$SK_ZONE" "$now" "%A %H:%M")"
+  echo "$BF_NAME (US): $(zdate "$US_ZONE" "$now" "%A %H:%M") ($US_ZONE)"
+  echo "call windows today (both awake 08:00-23:00), UTC:"
+  mid=$(utc_midnight)
+  for h in $(seq 0 23); do
+    e=$((mid + h * 3600))
+    sk=$((10#$(zdate "$SK_ZONE" "$e" %H))); us=$((10#$(zdate "$US_ZONE" "$e" %H)))
+    if [ "$sk" -ge 8 ] && [ "$sk" -lt 23 ] && [ "$us" -ge 8 ] && [ "$us" -lt 23 ]; then
+      printf '  %02d:00 UTC  (= %02d:00 SK / %02d:00 US)\n' "$h" "$sk" "$us"
+    fi
+  done
+  if [ -n "$VISIT_DATE" ]; then
+    v=$(parse_day "$VISIT_DATE") && [ -n "$v" ] && echo "visit countdown: $(( (v - now) / 86400 )) days until $VISIT_DATE <3"
+  else
+    echo "tip: set VISIT_DATE in $LDRCONF for a countdown"
+  fi
+}
+
+cmd_sk() { # sk [search] (phrasebook)
+  f="${FURASSISTANT_DATA_SK:-}"
+  [ -z "${f:-}" ] && f="$(dirname "$(command -v furassistant 2>/dev/null)")/../share/furassistant/sk-phrases.md"
+  [ -f "$f" ] || f="$DATA/sk-phrases.md"
+  if [ ! -f "$f" ]; then echo "phrasebook not installed"; return 1; fi
+  if [ $# -eq 0 ]; then cat "$f"; else grep -i -- "$*" "$f" || echo "(no match - try: love, night, fox)"; fi
+}
+
+cmd_speak() { # speak "text" (airi mouth: Piper TTS, local)
+  voice=$(ls "$DATA/voices/"*.onnx 2>/dev/null | head -1)
+  if ! command -v piper >/dev/null 2>&1 && ! python3 -c "import piper" 2>/dev/null; then
+    echo "Piper not installed. Run furassistant/voice/install-voice.sh"; return 1
+  fi
+  [ -n "$voice" ] || { echo "no voice model in $DATA/voices/ - run install-voice.sh"; return 1; }
+  out=/tmp/furassistant-say.wav
+  if command -v piper >/dev/null 2>&1; then
+    echo "$*" | piper --model "$voice" --output_file "$out" || return 1
+  else
+    echo "$*" | python3 -m piper --model "$voice" --output_file "$out" || return 1
+  fi
+  { command -v paplay >/dev/null && paplay "$out"; } || \
+  { command -v aplay >/dev/null && aplay "$out"; } || echo "(said it, but no player found - saved $out)"
+}
+
+cmd_listen() { # listen [secs] (airi ears: whisper.cpp, local)
+  secs="${1:-5}"
+  if [ ! -x "$HOME/.local/bin/whisper-cli" ] || [ ! -f "$DATA/voices/ggml-tiny.en.bin" ]; then
+    echo "whisper.cpp not installed. Run furassistant/voice/install-voice.sh"; return 1
+  fi
+  if ! command -v pw-record >/dev/null 2>&1; then echo "need pw-record (pipewire) to record"; return 1; fi
+  pw-record --rate 16000 /tmp/furassistant-hear.wav &
+  rec=$!; sleep "$secs"; kill "$rec" 2>/dev/null
+  "$HOME/.local/bin/whisper-cli" -m "$DATA/voices/ggml-tiny.en.bin" -f /tmp/furassistant-hear.wav -nt 2>/dev/null
+}
+
+cmd_checkin() { # proactive hype note (N.E.K.O-style; called by timer)
+  need_ollama
+  hr=$(date +%H); tod="evening"; [ "$hr" -lt 12 ] && tod="morning"; [ "$hr" -ge 12 ] && [ "$hr" -lt 18 ] && tod="afternoon"
+  tmp=$(mktemp)
+  build_msgs "Write a 2-line $tod hype note (SFW) for your bestie. Mention the time in Bratislava and for $BF_NAME." "checkin please" "$tmp"
+  msg=$(chat_call "$tmp"); rm -f "$tmp"
+  echo "[$tod checkin] $msg" >> "$DATA/chats/checkins.md"
+  notify-send "Paws ^_^" "$msg" 2>/dev/null || echo "$msg"
+  echo "$msg" | grep -qi "love\|proud\|amazing" && echo 95 > "$HUD/hype" || true
+}
+
+cmd_status() { # HUD meters (SoW state vars, platonic edition)
+  bar() { python3 -c "v=int($1); print('[' + '#'*int(v/10) + '-'*(10-int(v/10)) + ']')"; }
+  echo "energy $(bar "$(cat "$HUD/energy")") $(cat "$HUD/energy")"
+  echo "hype   $(bar "$(cat "$HUD/hype")") $(cat "$HUD/hype")"
+  echo "mood: $(cat "$HUD/mood")"
+  now=$(date +%s)
+  if date -d "@0" +%H >/dev/null 2>&1; then
+    echo "SK: $(TZ="$SK_ZONE" date -d "@$now" +%H:%M) | US: $(TZ="$US_ZONE" date -d "@$now" +%H:%M)"
+  else
+    echo "SK: $(TZ="$SK_ZONE" date -r "$now" +%H:%M) | US: $(TZ="$US_ZONE" date -r "$now" +%H:%M)"
+  fi
+}
+
+case "${1:-help}" in
+  chat) shift; cmd_chat "$@" ;;
+  ask) shift; [ $# -eq 0 ] && { echo 'usage: furassistant ask "question"'; exit 1; }; cmd_ask "$*" ;;
+  research) shift; [ $# -eq 0 ] && { echo 'usage: furassistant research <topic> [URL...]'; exit 1; }; cmd_research "$@" ;;
+  dream) cmd_dream ;;
+  rsi) shift; cmd_rsi "$@" ;;
+  config) shift; [ $# -eq 0 ] && { echo 'usage: furassistant config "request"'; exit 1; }; cmd_config "$*" ;;
+  skill) shift; [ $# -eq 0 ] && { ls "$SKILLDIR"; exit 0; }; cmd_skill "$@" ;;
+  memory) shift; cmd_memory "$@" ;;
+  council) shift; [ $# -eq 0 ] && { echo 'usage: furassistant council "question"'; exit 1; }; cmd_council "$*" ;;
+  quest) shift; cmd_quest "$@" ;;
+  ldr) cmd_ldr ;;
+  sk) shift; cmd_sk "$@" ;;
+  speak) shift; [ $# -eq 0 ] && { echo 'usage: furassistant speak "text"'; exit 1; }; cmd_speak "$*" ;;
+  listen) shift; cmd_listen "$@" ;;
+  checkin) cmd_checkin ;;
+  status) cmd_status ;;
+  *) echo "furassistant - local Hermes SFW companion ^_^"; echo "usage: furassistant {chat|ask|research|dream|rsi|config|skill|memory|council|quest|ldr|sk|speak|listen|checkin|status} ..." ;;
+esac

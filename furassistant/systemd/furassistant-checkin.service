@@ -1,0 +1,6 @@
+[Unit]
+Description=FurAssistant proactive check-in (morning/night hype)
+
+[Service]
+Type=oneshot
+ExecStart=%h/.local/bin/furassistant checkin

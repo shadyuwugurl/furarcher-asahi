@@ -1,0 +1,7 @@
+# Copy to ~/.config/furassistant/ldr.conf and edit.
+# BF's US timezone: pick from tzselect, e.g. America/New_York, America/Chicago,
+# America/Denver, America/Los_Angeles, America/Anchorage, Pacific/Honolulu
+US_ZONE=America/New_York
+BF_NAME=boyfriend
+# Next visit, YYYY-MM-DD (leave empty for no countdown)
+VISIT_DATE=

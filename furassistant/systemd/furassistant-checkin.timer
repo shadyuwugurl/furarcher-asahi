@@ -1,0 +1,10 @@
+[Unit]
+Description=FurAssistant check-ins morning and night
+
+[Timer]
+OnCalendar=08:00
+OnCalendar=22:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target
