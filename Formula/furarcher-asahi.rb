@@ -1,8 +1,8 @@
 class FurarcherAsahi < Formula
   desc "SFW furry/femboy Asahi Linux customizer + local Hermes AI companion"
   homepage "https://github.com/shadyuwugurl/furarcher-asahi"
-  url "https://github.com/shadyuwugurl/furarcher-asahi/releases/download/v0.1.0/furarcher-asahi-0.1.0.tar.gz"
-  sha256 "c8ed6f689af84bc114760dba6a376a3ba25044fec96005b7f4b203f47e39ecfd"
+  url "https://github.com/shadyuwugurl/furarcher-asahi/releases/download/v0.2.0/furarcher-asahi-0.2.0.tar.gz"
+  sha256 "7e0b71084acdf9288a1db89e90646da4f413ea4322caf35723f00baaa7c2c0e9"
   license "GPL-3.0-only"
 
   depends_on "python@3.14"
@@ -11,6 +11,7 @@ class FurarcherAsahi < Formula
     libexec.install Dir["*"] - ["Formula"]
     (bin/"furarcher").write_env_script libexec/"furarcher.sh", FURARCHER_ROOT: libexec
     bin.install_symlink libexec/"bin/furfetch"
+    bin.install_symlink libexec/"bin/ricer"
     bin.install_symlink libexec/"furassistant/bin/furassistant"
   end
 
