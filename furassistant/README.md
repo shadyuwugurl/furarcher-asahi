@@ -1,5 +1,9 @@
 # FurAssistant — local Hermes AI for Furarcher Asahi
 
+One package, one front door: `furassistant` also runs the installer
+(`furassistant install`) and the ricer (`furassistant rice ...`) from the
+same repo payload — no separate apps to juggle.
+
 SFW-only local companion, inspired by NyarchAssistant (which is a
 [Newelle](https://github.com/qwersyk/Newelle) fork: multi-provider chat,
 local models via Ollama/llama.cpp, terminal commands, MCP tools, memory,
@@ -16,9 +20,13 @@ M1 Asahi we ship a native ARM64 stack instead:
 ```bash
 cd furassistant
 chmod +x install-furassistant.sh
-./install-furassistant.sh --yes
+./install-furassistant.sh
 # 16GB Air: ./install-furassistant.sh --from=qwen3:14b
 ```
+
+Name: the assistant is called Paws out of the box because I had to pick
+something. Rename anytime: `furassistant name Mochi` (or set
+`FURASSISTANT_NAME`). The new name applies to prompts, chat, and timers.
 
 ## Features
 

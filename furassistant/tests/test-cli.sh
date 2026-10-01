@@ -85,5 +85,17 @@ printf 'US_ZONE=America/Chicago\nBF_NAME=TestBF\nVISIT_DATE=2030-01-01\n' > "$TE
 "$FUR" ldr | grep -q "TestBF" && pass "ldr config" || fail "ldr config"
 "$FUR" ldr | grep -q "countdown" && pass "ldr countdown" || fail "ldr countdown"
 
+# --- one package: install/rice/name ---
+FURASSISTANT_NAME=Testy "$FUR" prompt | grep -q "PROMPT.md" || fail "prompt run"
+FURASSISTANT_NAME=Testy "$FUR" prompt >/dev/null && grep -q "You are Testy" "$TESTHOME/.local/share/furassistant/PROMPT.md" && pass "name override" || fail "name override"
+"$FUR" name | grep -q "Paws" && pass "name default" || fail "name default"
+"$FUR" name Mochi | grep -qi "renamed" && pass "name set" || fail "name set"
+"$FUR" name | grep -q "Mochi" && pass "name persists" || fail "name persists"
+"$FUR" name "!!" >/dev/null 2>&1 && fail "bad name rejected" || pass "bad name rejected"
+FURARCHER_ROOT="$PWD" "$FUR" rice status | grep -q "DE:" && pass "rice delegation" || fail "rice delegation"
+FURARCHER_ROOT="$PWD" "$FUR" install --check-only >/dev/null 2>&1 && pass "install delegation" || fail "install delegation"
+mkdir -p "$TESTHOME/loner" && cp "$FUR" "$TESTHOME/loner/" && chmod +x "$TESTHOME/loner/furassistant"
+env -i HOME="$TESTHOME" PATH="/usr/bin:/bin" "$TESTHOME/loner/furassistant" rice status 2>&1 | grep -qi "not found nearby" && pass "loner graceful" || fail "loner graceful"
+
 if [ "$FAIL" -eq 0 ]; then echo "ALL CLI CHECKS PASSED"; else echo "SOME CLI CHECKS FAILED"; fi
 exit "$FAIL"
