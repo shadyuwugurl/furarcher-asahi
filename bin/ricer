@@ -11,6 +11,7 @@
 #   ricer darkmode           force dark mode: GNOME/GTK/kitty/waybar/wofi/hypr
 #   ricer dock               install waybar top-bar + bottom dock + wofi configs (mac-like)
 #   ricer macbinds           install Hyprland macOS keybinds + GNOME mac-ish tweaks (safe)
+#   ricer mactheme           install WhiteSur-Dark GTK (mac traffic lights, needs network)
 #   ricer gpu                Asahi GPU/ANE status: Mesa AGX check + honest ANE note
 #   ricer auto <mood>          fully automatic: web search -> top hit -> full rice (fallback: bundled)
 #   ricer find <query> [n] [--source=all|wallhaven|nekos|waifu|safebooru|openverse]  SFW web search (5 providers)
@@ -194,12 +195,43 @@ do_macbinds() {
   run "mkdir -p \"$HYDIR\""
   run "cp -f \"$ROOT/hypr/hyprland.conf\" \"$HYDIR/hyprland.conf\""
   if command -v gsettings >/dev/null 2>&1; then
-    # safe GNOME mac-ish tweaks: natural scroll, Super+Space launcher hint, dark
+    # GNOME mac parity: traffic-light side, natural scroll, mac shortcut order
     run "gsettings set org.gnome.desktop.peripherals.touchpad natural-scroll true || true"
     run "gsettings set org.gnome.desktop.wm.preferences button-layout 'close,minimize,maximize:' || true"
-    echo "(GNOME: Super key = Cmd; set Keyboard -> View/Change Shortcuts to taste)"
+    run "gsettings set org.gnome.desktop.wm.keybindings close \"['<Super>q\",\"<Alt>F4\"]\" || true"
+    run "gsettings set org.gnome.desktop.wm.keybindings switch-applications \"['<Super>Tab']\" || true"
+    run "gsettings set org.gnome.desktop.wm.keybindings switch-input-source \"['<Control>space']\" || true"
+    run "gsettings set org.gnome.settings-daemon.plugins.media-keys screenshot \"['<Super><Shift>3']\" || true"
+    run "gsettings set org.gnome.settings-daemon.plugins.media-keys area-screenshot \"['<Super><Shift>4']\" || true"
+    echo "(GNOME: Cmd+Q close, Cmd+Tab apps, Ctrl+Space input, Cmd+Shift+3/4 shots)"
   fi
-  echo "macbinds: SUPER+Space launcher, SUPER+Q/W kill, SUPER+Tab switch, SUPER+1..5 spaces."
+  echo "macbinds: Hyprland full mac map + kitty Cmd keys + GNOME mac order."
+}
+
+do_mactheme() {
+  # macOS look: WhiteSur GTK (real traffic-light buttons, left side) + dark.
+  # Pure CSS/SVG theme -> works on aarch64. Network needed (git clone).
+  echo "installing macOS-style WhiteSur-Dark GTK theme (traffic lights)..."
+  command -v git >/dev/null 2>&1 || { echo "need git: sudo dnf install -y git"; return 1; }
+  run "mkdir -p \"$HOME/.themes\""
+  if [ ! -d /tmp/WhiteSur-gtk-theme ]; then
+    run "git clone --depth 1 https://github.com/vinceliuice/WhiteSur-gtk-theme.git /tmp/WhiteSur-gtk-theme" || return 1
+  fi
+  run "bash /tmp/WhiteSur-gtk-theme/install.sh -d \"$HOME/.themes\"" || { echo "WhiteSur installer failed (see output above)"; return 1; }
+  if [ -d "$HOME/.themes/WhiteSur-Dark" ]; then
+    if command -v gsettings >/dev/null 2>&1; then
+      run "gsettings set org.gnome.desktop.interface gtk-theme 'WhiteSur-Dark' || true"
+      run "gsettings set org.gnome.desktop.wm.preferences button-layout 'close,minimize,maximize:' || true"
+      if command -v flatpak >/dev/null 2>&1; then run "flatpak override --user --env=GTK_THEME=WhiteSur-Dark || true"; fi
+    fi
+    if [ -f "$HYDIR/hyprland.conf" ] && grep -q "env = GTK_THEME,adw-gtk3-dark" "$HYDIR/hyprland.conf" 2>/dev/null; then
+      run "sed -i 's|env = GTK_THEME,adw-gtk3-dark|env = GTK_THEME,WhiteSur-Dark|' \"$HYDIR/hyprland.conf\""
+    fi
+    echo "mactheme: WhiteSur-Dark active (log out/in for full effect)."
+  else
+    echo "WhiteSur-Dark dir missing after install - open /tmp/WhiteSur-gtk-theme to inspect."
+    return 1
+  fi
 }
 
 do_gpu() {
@@ -538,6 +570,7 @@ case "${1:-status}" in
   darkmode) do_darkmode ;;
   dock) do_dock ;;
   macbinds) do_macbinds ;;
+  mactheme) do_mactheme ;;
   gpu) do_gpu ;;
   find) shift; [ $# -ge 1 ] || { echo 'usage: ricer find <query> [count] [--source=all|wallhaven|nekos|waifu|safebooru|openverse]'; exit 1; }; cmd_find "$@" ;;
   "get") shift; [ $# -ge 1 ] || { echo 'usage: ricer get <n> [--apply[=theme]]'; exit 1; }; cmd_get "$@" ;;
@@ -545,5 +578,5 @@ case "${1:-status}" in
   fetch-pack) shift; [ $# -ge 1 ] || { echo 'usage: ricer fetch-pack <boykisser|mlm|furry|femboy|gaylove|midnight|bear|achillean> [n]'; exit 1; }; cmd_fetchpack "$@" ;;
   auto) shift; cmd_auto "${1:-boykisser}" ;;
   status) cmd_status ;;
-  *) echo "usage: ricer {apply [IMAGE] [theme]|wallpaper|theme|themes|mood|love|wallpapers|darkmode|dock|macbinds|gpu|find|get|preview|fetch-pack|auto|status} [--dry-run]"; exit 1 ;;
+  *) echo "usage: ricer {apply [IMAGE] [theme]|wallpaper|theme|themes|mood|love|wallpapers|darkmode|dock|macbinds|mactheme|gpu|find|get|preview|fetch-pack|auto|status} [--dry-run]"; exit 1 ;;
 esac

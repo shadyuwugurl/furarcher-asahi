@@ -40,8 +40,15 @@ Installs Hyprland + waybar/wofi/kitty/mate-polkit from **official Fedora repos**
 `hypr/hyprland.conf` (M1 Air 2560x1664, scale 2) with:
 * dark mode everywhere (`ricer darkmode`: GTK adw-gtk3-dark, prefer-dark, kitty, waybar, wofi)
 * mac-like top bar + bottom dock (`ricer dock` -> `~/.config/waybar/furarcher-{top,dock}.*`)
-* macOS keybinds (`ricer macbinds`): SUPER=Cmd, SUPER+Space launcher, SUPER+Q/W close,
-  SUPER+Tab switch, SUPER+1..5 spaces, natural scroll + tap-to-click
+* macOS keybinds (`ricer macbinds`): full mac map — Cmd+Space Spotlight,
+  Cmd+Tab/` window switch, Cmd+Q/W/N/T/H/M/F, Cmd+Opt+Esc force-quit,
+  Cmd+Shift+3/4/5 screenshots, Ctrl+Cmd+Q lock, Mission Control spaces 1-5,
+  natural scroll + tap-to-click; kitty gets Cmd+C/V/T/W/N, tabs 1-9, font keys;
+  GNOME gets Cmd+Q close, Cmd+Tab apps, Ctrl+Space input switch, Cmd+Shift+3/4 shots
+* macOS look (`ricer mactheme`, needs network): WhiteSur-Dark GTK = real
+  traffic-light buttons (red/yellow/green, left side) in every GTK app on both
+  GNOME and Hyprland. Limit: Hyprland draws no titlebars of its own, so there
+  are no buttons on bare Hyprland chrome — only inside apps.
 
 ```bash
 ./bin/ricer apply   # boykisser-dark wallpaper + boykisser theme + darkmode + dock + macbinds

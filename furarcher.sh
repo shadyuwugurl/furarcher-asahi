@@ -226,6 +226,10 @@ if ask "Apply Furarcher rice now (boykisser dark wallpaper + theme + dock + macb
   run "chmod +x \"$SCRIPT_DIR/bin/ricer\""
   run "\"$SCRIPT_DIR/bin/ricer\" apply"
 fi
+if ask "Install macOS WhiteSur theme (traffic lights, needs network)"; then
+  run "chmod +x \"$SCRIPT_DIR/bin/ricer\""
+  run "\"$SCRIPT_DIR/bin/ricer\" mactheme || true"
+fi
 if ask "Show GPU/ANE status (Asahi AGX check)"; then
   run "chmod +x \"$SCRIPT_DIR/bin/ricer\""
   run "\"$SCRIPT_DIR/bin/ricer\" gpu || true"
