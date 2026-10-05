@@ -1,23 +1,79 @@
 #!/bin/bash
-# furfetch - SFW furry + neko system fetch, 16+ safe, no NSFW
+# furfetch - SFW boykisser + mlm + furry fetch, 16+ safe, no NSFW
 # Part of Furarcher Asahi Edition
-# Shows pride paw + neko ears ASCII, system info
+# Usage: furfetch [boykisser|mlm|furry|femboy|gaylove|bear]
 
-PINK='\033[38;5;212m'; PURPLE='\033[0;35m'
+PINK='\033[38;5;212m'; PURPLE='\033[0;35m'; BLUE='\033[38;5;75m'; GOLD='\033[38;5;220m'
 CYAN='\033[0;36m'; NC='\033[0m'
 
+MOOD="${1:-boykisser}"
+case "$MOOD" in --help|-h) echo "usage: furfetch [boykisser|mlm|furry|femboy|gaylove|bear|midnight]"; exit 0;; esac
+
 echo -e "${PINK}"
-cat <<'FURART'
+case "$MOOD" in
+  mlm|achillean)
+    echo -e "${BLUE}"
+    cat <<'FURART'
+  /\  /\    /\  /\
+ ( o_o  )  ( o_o  )   men loving men
+  > :3 < ~~ > :3 <
+ /|   |\/|   |\     holding paws, SFW
+(_|   |_)(_|   |_)
+   mlm • achillean • boyfriends
+FURART
+    ;;
+  furry|paw|bear)
+    cat <<'FURART'
+   __    __   furry night walk
+  ( o_o  )( o_o  )
+  (  >^<  )(  >^<  )
+  /| paw || paw |\
+ (_|    |)(_|    |_)  howl softly, SFW
+     furries • paws • bears
+FURART
+    ;;
+  femboy)
+    cat <<'FURART'
   /\  /\    ____
  ( o_o  )  / @@ \
-  > ^ <   | (..) |
+  > :3 <  | (..) |  femboy mode
+ /|striped|\ \ @@ /  thigh-high power
+(_|   |_)  /___\    soft + strong, SFW
+FURART
+    ;;
+  gaylove|honey|gay)
+    echo -e "${GOLD}"
+    cat <<'FURART'
+   _  _    gay love is love
+  ( \/ )   two paws + one heart
+   \  /  _ ( o_o ) _
+   \/  (_| > :3 < |_)  cheek kiss, SFW
+        boyfriends forever
+FURART
+    ;;
+  midnight|midnight-kiss)
+    cat <<'FURART'
+  /\  /\   . * :3 * .
+ ( -_-  )  midnight kiss
+  > :3 <   stars + pink glow
+ /|   |\   sleepy boykisser, SFW
+(_|   |_)
+FURART
+    ;;
+  *) # boykisser default
+    cat <<'FURART'
+  /\  /\    ____
+ ( o_o  )  / @@ \
+  > :3 <  | (..) |  boykisser mode
  /|   |\   \ @@ /
 (_|   |_)  /___\
-   paw + neko, SFW EDITION
+  gay boys - furries - femboys - SFW
 FURART
+    ;;
+esac
 echo -e "${NC}"
 
-echo -e "${PURPLE}furfetch${NC} -- SFW femboy furry mode ^_^"
+echo -e "${PURPLE}furfetch${NC} -- SFW ${MOOD} mode ^_^"
 echo "--------------------------------"
 if command -v fastfetch >/dev/null 2>&1; then
   fastfetch --logo none 2>/dev/null | head -n 20
@@ -33,5 +89,9 @@ if grep -qi asahi /proc/version 2>/dev/null || [ -f /etc/asahi-release ]; then
   echo -e "${CYAN}platform:${NC} Apple Silicon (Asahi Linux) :3"
 else
   echo -e "${CYAN}platform:${NC} $(uname -m)"
+fi
+# GPU hint
+if command -v glxinfo >/dev/null 2>&1; then
+  echo -e "${CYAN}gpu:${NC} $(glxinfo 2>/dev/null | grep -i 'OpenGL renderer' | head -1)"
 fi
 echo -e "${PINK}stay soft, stay proud, stay SFW <3${NC}"

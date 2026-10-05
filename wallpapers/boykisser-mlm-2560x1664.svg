@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="2560" height="1664" viewBox="0 0 2560 1664">
+<defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1">
+<stop offset="0" stop-color="#0b1e22"/><stop offset="0.35" stop-color="#123a3f"/><stop offset="0.7" stop-color="#1e5a6b"/><stop offset="1" stop-color="#0e2a4a"/>
+</linearGradient>
+<radialGradient id="glow" cx="0.5" cy="0.4" r="0.6">
+<stop offset="0" stop-color="#7ad9ff" stop-opacity="0.55"/><stop offset="1" stop-color="#7ad9ff" stop-opacity="0"/>
+</radialGradient></defs>
+<rect width="2560" height="1664" fill="url(#g)"/>
+<rect width="2560" height="1664" fill="url(#glow)"/>
+<!-- mlm flag stripes, subtle, bottom -->
+<g opacity="0.5">
+<rect x="0" y="1340" width="2560" height="65" fill="#078d70"/>
+<rect x="0" y="1405" width="2560" height="65" fill="#98e8c1"/>
+<rect x="0" y="1470" width="2560" height="65" fill="#ffffff"/>
+<rect x="0" y="1535" width="2560" height="65" fill="#7ab2ff"/>
+<rect x="0" y="1600" width="2560" height="64" fill="#3d2bff"/>
+</g>
+<!-- two kissy cat faces leaning in, original line-art, SFW -->
+<g fill="none" stroke="#eafcff" stroke-width="10" opacity="0.95">
+<ellipse cx="1100" cy="760" rx="200" ry="175"/>
+<polygon points="940,620 900,450 1050,550"/>
+<polygon points="1260,620 1300,450 1150,550"/>
+<ellipse cx="1460" cy="760" rx="200" ry="175"/>
+<polygon points="1300,620 1260,450 1410,550"/>
+<polygon points="1620,620 1660,450 1510,550"/>
+<path d="M1020 750 q30 -30 60 0"/>
+<path d="M1400 750 q30 -30 60 0"/>
+<path d="M1075 830 q20 -16 20 8 q0 -24 20 -8"/>
+<path d="M1445 830 q20 -16 20 8 q0 -24 20 -8"/>
+</g>
+<!-- shared heart above -->
+<path d="M1280 560 c-40 -60 -150 -40 -150 30 c0 55 90 100 150 140 c60 -40 150 -85 150 -140 c0 -70 -110 -90 -150 -30 z" fill="#ff7ad9" opacity="0.95"/>
+<g fill="#f5d5ec" font-family="sans-serif" text-anchor="middle">
+<text x="1280" y="1160" font-size="76">men loving men ^_^</text>
+<text x="1280" y="1240" font-size="38" opacity="0.9">boykisser • mlm • achillean • holding paws • SFW</text>
+</g>
+</svg>

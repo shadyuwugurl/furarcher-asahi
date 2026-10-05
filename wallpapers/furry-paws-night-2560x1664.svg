@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="2560" height="1664" viewBox="0 0 2560 1664">
+<defs><linearGradient id="night" x1="0" y1="0" x2="0" y2="1">
+<stop offset="0" stop-color="#070a18"/><stop offset="0.6" stop-color="#141b3a"/><stop offset="1" stop-color="#2b1e4a"/>
+</linearGradient></defs>
+<rect width="2560" height="1664" fill="url(#night)"/>
+<!-- moon -->
+<circle cx="2050" cy="350" r="150" fill="#f5ead5" opacity="0.95"/>
+<circle cx="2000" cy="320" r="30" fill="#e0d0b5" opacity="0.6"/>
+<circle cx="2080" cy="390" r="22" fill="#e0d0b5" opacity="0.6"/>
+<!-- stars -->
+<g fill="#ffffff" opacity="0.85">
+<circle cx="300" cy="250" r="6"/><circle cx="600" cy="150" r="5"/><circle cx="900" cy="300" r="6"/>
+<circle cx="1200" cy="180" r="5"/><circle cx="1500" cy="280" r="6"/><circle cx="400" cy="600" r="5"/>
+<circle cx="800" cy="550" r="5"/><circle cx="1700" cy="600" r="6"/><circle cx="2200" cy="700" r="5"/>
+</g>
+<!-- paw-trail constellation across the sky -->
+<g fill="none" stroke="#b28dff" stroke-width="5" opacity="0.8">
+<path d="M350 1250 L650 1100 L950 1180 L1250 1000 L1550 1080 L1850 900 L2150 950" stroke-dasharray="12 14"/>
+</g>
+<g fill="#ff9ecf" opacity="0.9">
+<g transform="translate(350,1250)"><ellipse rx="55" ry="45"/><ellipse cx="-30" cy="-50" rx="18" ry="24"/><ellipse cx="0" cy="-62" rx="18" ry="24"/><ellipse cx="30" cy="-50" rx="18" ry="24"/></g>
+<g transform="translate(950,1180)"><ellipse rx="55" ry="45"/><ellipse cx="-30" cy="-50" rx="18" ry="24"/><ellipse cx="0" cy="-62" rx="18" ry="24"/><ellipse cx="30" cy="-50" rx="18" ry="24"/></g>
+<g transform="translate(1550,1080)"><ellipse rx="55" ry="45"/><ellipse cx="-30" cy="-50" rx="18" ry="24"/><ellipse cx="0" cy="-62" rx="18" ry="24"/><ellipse cx="30" cy="-50" rx="18" ry="24"/></g>
+<g transform="translate(2150,950)"><ellipse rx="55" ry="45"/><ellipse cx="-30" cy="-50" rx="18" ry="24"/><ellipse cx="0" cy="-62" rx="18" ry="24"/><ellipse cx="30" cy="-50" rx="18" ry="24"/></g>
+</g>
+<!-- sleepy boykisser face in the moon shadow, tiny -->
+<g fill="none" stroke="#1a0e1a" stroke-width="6" opacity="0.8">
+<path d="M2000 350 q20 -20 40 0"/>
+<path d="M2070 350 q20 -20 40 0"/>
+<path d="M2035 390 q15 -12 15 6 q0 -18 15 -6"/>
+</g>
+<g fill="#f5d5ec" font-family="sans-serif" text-anchor="middle">
+<text x="1280" y="1450" font-size="72">furry night walk ^_^</text>
+<text x="1280" y="1525" font-size="36" opacity="0.85">paws • stars • soft howls • SFW</text>
+</g>
+</svg>

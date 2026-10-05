@@ -59,8 +59,10 @@ class H(BaseHTTPRequestHandler):
     def do_GET(self):
         if self.path.startswith("/api/v1/search"):
             body = b'{"data": [{"id": "ab12cd", "path": "http://127.0.0.1:11441/tiny.png", "dimension_x": 1920, "dimension_y": 1080}], "meta": {"total": 1}}'
-        elif self.path.startswith("/api/v2/neko"):
+        elif self.path.startswith("/api/v2/"):
             body = b'{"results": [{"url": "http://127.0.0.1:11441/tiny.png", "dimensions": {"width": 800, "height": 600}, "artist_name": "stub", "source_url": "http://example.com"}]}'
+        elif self.path.startswith("/search/"):
+            body = b'{"images": [{"image_id": 4242, "url": "http://127.0.0.1:11441/tiny.png", "width": 1280, "height": 720, "source": "stub-waifu"}]}'
         elif self.path == "/tiny.png":
             body = open(root + "/tiny.png", "rb").read()
         else:
@@ -72,13 +74,42 @@ PYEOF
 STUBAPI=$!
 trap 'kill $STUBAPI 2>/dev/null; wait $STUBAPI 2>/dev/null; rm -rf "$TESTHOME"' EXIT
 sleep 1
-export WALLHAVEN_BASE="http://127.0.0.1:11441" NEKOS_BASE="http://127.0.0.1:11441"
+export WALLHAVEN_BASE="http://127.0.0.1:11441" NEKOS_BASE="http://127.0.0.1:11441" WAIFU_BASE="http://127.0.0.1:11441"
 "$R" find neko 2 | grep -q "\[1\] wallhaven" && pass "find wallhaven" || fail "find wallhaven"
 "$R" find neko 2 | grep -q "nekos.best 800x600" && pass "find nekos" || fail "find nekos"
+"$R" find neko 2 | grep -q "waifu.im 1280x720" && pass "find waifu" || fail "find waifu"
+"$R" find mlm 2 --source=nekos | grep -q "nekos.best" && pass "find mlm nekos route" || fail "find mlm nekos route"
+"$R" find furry 2 --source=nekos | grep -q "nekos.best" && pass "find furry nekos route" || fail "find furry nekos route"
+"$R" find pastel 2 --source=wallhaven | grep -q "wallhaven" && pass "find source wallhaven" || fail "find source wallhaven"
+"$R" find neko 2 --source=waifu | grep -q "waifu.im" && pass "find source waifu" || fail "find source waifu"
 "$R" get 1 | grep -q "saved:" && pass "get download" || fail "get download"
 [ -f "$TESTHOME/.local/share/backgrounds/tiny.png" ] && pass "get saved" || fail "get saved"
+"$R" preview 1 | grep -q "http" && pass "preview url" || fail "preview url"
+"$R" fetch-pack boykisser 2 2>&1 | grep -q "pack:" && pass "fetch-pack" || fail "fetch-pack"
+"$R" fetch-pack bogus 2 >/dev/null 2>&1 && fail "bad pack rejected" || pass "bad pack rejected"
 "$R" get 9 >/dev/null 2>&1 && fail "bad index rejected" || pass "bad index rejected"
-WALLHAVEN_BASE="http://127.0.0.1:9" NEKOS_BASE="http://127.0.0.1:9" "$R" find fox 2 2>&1 | grep -q "no results" && pass "find graceful" || fail "find graceful"
+WALLHAVEN_BASE="http://127.0.0.1:9" NEKOS_BASE="http://127.0.0.1:9" WAIFU_BASE="http://127.0.0.1:9" "$R" find fox 2 2>&1 | grep -q "no results" && pass "find graceful" || fail "find graceful"
+
+"$R" theme boykisser >/dev/null && grep -q "ff7ad9" "$TESTHOME/.config/kitty/furarcher-theme.conf" && pass "boykisser theme" || fail "boykisser theme"
+"$R" darkmode >/dev/null && pass "darkmode" || fail "darkmode"
+"$R" dock >/dev/null && [ -f "$TESTHOME/.config/waybar/furarcher-top.jsonc" ] && [ -f "$TESTHOME/.config/waybar/furarcher-dock.jsonc" ] && pass "dock configs" || fail "dock configs"
+grep -q "kitty-furarcher.conf" "$TESTHOME/.config/kitty/kitty.conf" && pass "kitty love include" || fail "kitty love include"
+"$R" macbinds >/dev/null && grep -q "SUPER, Space" "$TESTHOME/.config/hypr/hyprland.conf" && pass "macbinds" || fail "macbinds"
+"$R" gpu 2>&1 | grep -q "ANE" && pass "gpu status" || fail "gpu status"
+"$R" themes | grep -q "mlm" && pass "themes list mlm" || fail "themes list mlm"
+for t in mlm achillean bear honey midnight paw furry gay femboy; do
+  "$R" theme "$t" >/dev/null 2>&1 && pass "theme $t" || fail "theme $t"
+done
+"$R" wallpapers | grep -q "boykisser-mlm" && pass "wallpapers list" || fail "wallpapers list"
+"$R" mood mlm >/dev/null && grep -q "078d70" "$TESTHOME/.config/kitty/furarcher-theme.conf" && pass "mood mlm" || fail "mood mlm"
+"$R" mood gaylove >/dev/null && grep -q "ff9e5e" "$TESTHOME/.config/kitty/furarcher-theme.conf" && pass "mood gaylove" || fail "mood gaylove"
+"$R" mood furry >/dev/null && pass "mood furry" || fail "mood furry"
+"$R" mood bogus >/dev/null 2>&1 && fail "bad mood rejected" || pass "bad mood rejected"
+"$R" love mlm | grep -qi "men loving men" && pass "love mlm" || fail "love mlm"
+"$R" love gaylove | grep -qi "gay love" && pass "love gaylove" || fail "love gaylove"
+"$R" love furry | grep -qi "furry" && pass "love furry" || fail "love furry"
+"./bin/furfetch" mlm >/dev/null 2>&1 && pass "furfetch mlm" || fail "furfetch mlm"
+"./bin/furfetch" gaylove >/dev/null 2>&1 && pass "furfetch gaylove" || fail "furfetch gaylove"
 
 rm -rf "$TESTHOME"
 if [ "$FAIL" -eq 0 ]; then echo "ALL RICER CHECKS PASSED"; else echo "SOME RICER CHECKS FAILED"; fi

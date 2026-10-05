@@ -1,0 +1,7 @@
+/* bottom dock — centered, mac-like, dark */
+* { font-family: "Cantarell", sans-serif; font-size: 13px; }
+window#waybar { background: rgba(18, 10, 22, 0.88); color: #f5d5ec; border: 1px solid rgba(255,122,217,0.4); border-radius: 14px; }
+#workspaces button { padding: 0 8px; color: #b28dff; }
+#workspaces button.active { background: #ff7ad9; color: #1a0e1a; border-radius: 10px; }
+#taskbar button { padding: 2px 8px; border-radius: 10px; }
+#taskbar button.active { background: rgba(255,122,217,0.3); }

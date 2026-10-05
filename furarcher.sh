@@ -75,7 +75,7 @@ install_deps_asahi() {
   #  - classic 'wget' is retired on Fedora -> use curl (already listed)
   #  - 'npm' ships as 'nodejs-npm'; 'gnome-shell-extensions' meta does not exist;
   #  - 'polkit-gnome' does not exist -> 'mate-polkit' (hyprland step)
-  run "sudo dnf install -y curl flatpak python3-pip gnome-menus kitty git fastfetch nodejs-npm nodejs btop gnome-extensions-app tar wl-clipboard tzdata libnotify"
+  run "sudo dnf install -y curl flatpak python3-pip gnome-menus kitty git fastfetch nodejs-npm nodejs btop gnome-extensions-app tar wl-clipboard tzdata libnotify glx-utils vulkan-tools"
   run "pip3 install --user pywal"
   # ensure wal on PATH
   if ! command -v wal >/dev/null 2>&1 && [ -f "$HOME/.local/bin/wal" ]; then
@@ -156,25 +156,37 @@ install_flatpaks_sfw() {
 }
 
 install_hyprland_asahi_experimental() {
-  echo -e "${PINK}== Experimental Hyprland on Asahi (M1 Air) ==${NC}"
+  echo -e "${PINK}== Hyprland on Asahi (M1 Air) - dark + dock + macbinds ==${NC}"
   echo "Hyprland = you typed 'hyperland' - this is it (Wayland tiling compositor)."
-  echo "Status on Asahi Apple GPU: works for many but glitchy vs GNOME. GNOME stays the stable pick."
+  echo "M1 Air 2560x1664, dark mode only, macOS keybinds (SUPER=Cmd), top bar + bottom dock."
+  echo "Status on Asahi Apple GPU: works for many but glitchy vs GNOME. GNOME stays installed as fallback."
   echo "This installs Hyprland from official Fedora repos (0.44+ on F41, verified aarch64)"
-  echo " + waybar/wofi/kitty, copies hypr/hyprland.conf tuned for M1 Air 2560x1664."
-  if ! ask "Continue with experimental Hyprland install"; then return 0; fi
-  run "sudo dnf install -y hyprland waybar wofi kitty foot mate-polkit pipewire wireplumber grim slurp wl-clipboard || echo 'some hypr pkgs missing (ok, partial install)'"
-  run "mkdir -p $HOME/.config/hypr"
+  echo " + waybar/wofi/kitty, copies hypr/hyprland.conf + waybar top/dock + wofi dark."
+  if ! ask "Continue with Hyprland install"; then return 0; fi
+  run "sudo dnf install -y hyprland waybar wofi kitty foot mate-polkit pipewire wireplumber grim slurp wl-clipboard mesa-dri-drivers mesa-vulkan-drivers || echo 'some hypr pkgs missing (ok, partial install)'"
+  run "mkdir -p $HOME/.config/hypr $HOME/.config/waybar $HOME/.config/wofi"
   run "cp -f \"$SCRIPT_DIR/hypr/hyprland.conf\" $HOME/.config/hypr/hyprland.conf"
+  run "cp -f \"$SCRIPT_DIR/hypr/waybar-config.jsonc\" $HOME/.config/waybar/furarcher-top.jsonc"
+  run "cp -f \"$SCRIPT_DIR/hypr/waybar-style.css\" $HOME/.config/waybar/furarcher-top.css"
+  run "cp -f \"$SCRIPT_DIR/hypr/waybar-dock.jsonc\" $HOME/.config/waybar/furarcher-dock.jsonc"
+  run "cp -f \"$SCRIPT_DIR/hypr/waybar-dock.css\" $HOME/.config/waybar/furarcher-dock.css"
+  run "cp -f \"$SCRIPT_DIR/hypr/wofi-style.css\" $HOME/.config/wofi/style.css"
+  echo "GPU: Asahi AGX comes from kernel + Mesa (no extra step on Asahi Remix)."
+  echo "ANE: no Linux driver exists - AI uses CPU (keep <=8B models on 8GB Air)."
   echo "Select Hyprland at login (GDM gear icon). If black screen: switch back to GNOME."
 }
 
 configure_gsettings_safe() {
-  if [ "$MODE" = "hyprland" ]; then echo "Skipping GNOME dconf load in Hyprland mode."; return 0; fi
+  if [ "$MODE" = "hyprland" ]; then echo "Applying dark mode even in Hyprland mode (GTK apps)."; fi
   check_gnome_version_soft || return 1
   run "dconf dump / > $HOME/dconf-backup-furarcher.txt"
   echo "Loading upstream GNOME keybindings/theme bits (best-effort)..."
   run "cd /tmp/NyarchLinuxComp/Gnome/etc/dconf/db/local.d && dconf load / < 02-interface || true"
   run "cd /tmp/NyarchLinuxComp/Gnome/etc/dconf/db/local.d && dconf load / < 04-wmpreferences || true"
+  echo "Forcing dark mode (overrides upstream light bits)..."
+  run "gsettings set org.gnome.desktop.interface gtk-theme 'adw-gtk3-dark' || true"
+  run "gsettings set org.gnome.desktop.interface color-scheme 'prefer-dark' || true"
+  run "gsettings set org.gnome.desktop.peripherals.touchpad natural-scroll true || true"
 }
 
 install_furassistant_hook() {
@@ -210,9 +222,13 @@ fi
 if ask "[safe] Install furfetch + SFW neko flavor"; then install_furfetch; fi
 if ask "Install SFW furry wallpapers"; then install_wallpapers_furry_sfw; fi
 if ask "Install icons/themes/kitty bits"; then install_icons_themes_kitty; fi
-if ask "Apply Furarcher rice now (wallpaper + pink theme + kitty + Hyprland colors)"; then
+if ask "Apply Furarcher rice now (boykisser dark wallpaper + theme + dock + macbinds)"; then
   run "chmod +x \"$SCRIPT_DIR/bin/ricer\""
   run "\"$SCRIPT_DIR/bin/ricer\" apply"
+fi
+if ask "Show GPU/ANE status (Asahi AGX check)"; then
+  run "chmod +x \"$SCRIPT_DIR/bin/ricer\""
+  run "\"$SCRIPT_DIR/bin/ricer\" gpu || true"
 fi
 if ask "Install SFW flatpaks (aarch64-safe)"; then install_flatpaks_sfw; fi
 if ask "Install FurAssistant local AI (Ollama + Hermes, ~5GB)"; then install_furassistant_hook; fi

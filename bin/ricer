@@ -1,10 +1,21 @@
 #!/bin/bash
 # ricer - Furarcher desktop ricing for Asahi (GNOME + Hyprland). No sudo, ~/.local only.
-#   ricer apply [IMAGE]      full rice: wallpaper + theme + kitty + hypr colors
+# Centre: boykisser + gay boys + furries + femboys, SFW 16+ only. Dark mode everywhere.
+#   ricer apply [IMAGE] [THEME]  full rice: wallpaper + theme + kitty + hypr colors + darkmode + dock
 #   ricer wallpaper <img>    set wallpaper (GNOME gsettings + Hyprland if present)
-#   ricer theme <name>       apply palette: pink | purple | ocean | trans | rainbow | bi
-#   ricer find <query> [n]  auto-search SFW wallpapers (wallhaven purity=100 + nekos.best)
-#   ricer get <n> [--apply[=theme]]  download result n (and optionally apply it)
+#   ricer theme <name>       apply palette (see `ricer themes`)
+#   ricer themes             list all pride/love palettes with flag notes
+#   ricer mood <name>        one-shot preset: boykisser|mlm|furry|femboy|gaylove|midnight
+#   ricer love [name]        wholesome SFW affirmation (mlm / gay love / furry / femboy / boykisser)
+#   ricer wallpapers         list bundled SFW wallpapers
+#   ricer darkmode           force dark mode: GNOME/GTK/kitty/waybar/wofi/hypr
+#   ricer dock               install waybar top-bar + bottom dock + wofi configs (mac-like)
+#   ricer macbinds           install Hyprland macOS keybinds + GNOME mac-ish tweaks (safe)
+#   ricer gpu                Asahi GPU/ANE status: Mesa AGX check + honest ANE note
+#   ricer find <query> [n] [--source=all|wallhaven|nekos|waifu]  SFW web search (3 providers)
+#   ricer get <n> [--apply[=theme]]  download result n (image-validated, logged)
+#   ricer preview <n>  show URL + kitty inline preview if available
+#   ricer fetch-pack <mood> [n]  download top-n SFW web hits for a mood
 #   ricer status             show current rice state
 # Flags: --dry-run, --yes
 set -u
@@ -13,23 +24,65 @@ ROOT="${FURARCHER_ROOT:-$(cd "$(dirname "$0")/.." && pwd)}"
 BGDIR="$HOME/.local/share/backgrounds"
 KYDIR="$HOME/.config/kitty"
 HYDIR="$HOME/.config/hypr"
+WBDIR="$HOME/.config/waybar"
+WFDIR="$HOME/.config/wofi"
 RCACHE="$HOME/.local/share/furarcher"
 WH_BASE="${WALLHAVEN_BASE:-https://wallhaven.cc}"
 NB_BASE="${NEKOS_BASE:-https://nekos.best}"
+WA_BASE="${WAIFU_BASE:-https://api.waifu.im}"
 DRY="false"
 for a in "$@"; do case "$a" in --dry-run) DRY="true";; esac; done
 run() { if [ "$DRY" = "true" ]; then echo "[dry-run] $*"; else eval "$*"; fi; }
 
 palette() { # palette <name> -> "bg fg accent accent2"
   case "$1" in
+    boykisser) echo "1a0e1a f5d5ec ff7ad9 b28dff" ;;
     pink)   echo "1a0e1a f5d5ec ff7ad9 ff9ecf" ;;
+    femboy) echo "14101e ffe4f4 7ad9ff ff9ecf" ;;
+    gay)    echo "101418 f5f5f5 fe0000 ffd900" ;;
+    furry)   echo "161020 f5d5ec ff9e5e b28dff" ;;
+    mlm)    echo "0b1e22 eafcff 078d70 7ab2ff" ;;
+    achillean) echo "0e1a2b f0f6ff 5cb8ff ffd166" ;;
+    bear)   echo "171008 f5e8d5 d68c3a 8a5a2b" ;;
+    honey)  echo "1c1008 fff3e0 ff9e5e ffb3c8" ;;
+    midnight) echo "0d0a18 e2d5ff ff7ad9 5cb8ff" ;;
+    paw)    echo "0a0f1e f5d5ec b28dff ff9ecf" ;;
     purple) echo "120e1e e2d5ff b28dff d0b3ff" ;;
     ocean)  echo "0b1620 d5ecf5 7ad9ff a3e4ff" ;;
     trans)  echo "141821 f5f5f5 5bcffa f5a9b8" ;;
     rainbow) echo "141414 f5f5f5 fe0000 8cff00" ;;
     bi)     echo "161020 f5d5ec d60270 0038a8" ;;
-    *) echo "unknown theme: $1 (pink|purple|ocean|trans|rainbow|bi)" >&2; return 1 ;;
+    *) echo "unknown theme: $1 (see: ricer themes)" >&2; return 1 ;;
   esac
+}
+
+theme_desc() {
+  case "$1" in
+    boykisser) echo "boykisser — kissy pink + lavender on near-black. The default house mood." ;;
+    pink) echo "pink — classic femboy pink blast." ;;
+    femboy) echo "femboy — baby-blue + pink on plum. Soft thigh-high energy, SFW." ;;
+    gay) echo "gay — rainbow-first red/gold pop for gay love." ;;
+    furry) echo "furry — warm amber paw-orange + lavender, con-floor at midnight." ;;
+    mlm) echo "mlm — men-loving-men flag: deep teal, sea-green, white, sky/indigo blue." ;;
+    achillean) echo "achillean — mlm variant: gold + sky blue on navy, for boyfriends." ;;
+    bear) echo "bear — bear-pride browns + honey gold. Big, warm, cuddly." ;;
+    honey) echo "honey (gay love) — sunset pinks + amber. Slow-dance / holding-hands mood." ;;
+    midnight) echo "midnight kiss — boykisser after dark: pink + ice blue on violet-black." ;;
+    paw) echo "paw (furry night) — lavender + pink on starry navy. Night-walk constellations." ;;
+    purple) echo "purple — royal lavender haze." ;;
+    ocean) echo "ocean — cool Asahi blues." ;;
+    trans) echo "trans — light blue / pink / white pride." ;;
+    rainbow) echo "rainbow — full six-stripe pride pop." ;;
+    bi) echo "bi — pink / purple / blue pride." ;;
+  esac
+}
+
+cmd_themes() {
+  echo "furarcher pride/love palettes (all dark-mode, SFW):"
+  for t in boykisser pink femboy gay furry mlm achillean bear honey midnight paw purple ocean trans rainbow bi; do
+    printf "  %-10s %s\n" "$t" "$(theme_desc "$t")"
+  done
+  echo "use: ricer theme <name> | ricer mood <name>"
 }
 
 do_wallpaper() { # do_wallpaper <img>
@@ -41,15 +94,16 @@ do_wallpaper() { # do_wallpaper <img>
   if command -v gsettings >/dev/null 2>&1; then
     run "gsettings set org.gnome.desktop.background picture-uri \"file://$BGDIR/$base\""
     run "gsettings set org.gnome.desktop.background picture-uri-dark \"file://$BGDIR/$base\""
+    run "gsettings set org.gnome.desktop.background picture-options zoom || true"
   else
     echo "(gsettings missing - GNOME wallpaper skipped)"
   fi
-  if command -v hyprpaper >/dev/null 2>&1; then
-    run "hyprpaper preload \"$BGDIR/$base\" && hyprpaper wallpaper \",$BGDIR/$base\" || true"
-  elif command -v swww >/dev/null 2>&1; then
+  if command -v swww >/dev/null 2>&1; then
     run "swww img \"$BGDIR/$base\" || true"
+  elif command -v hyprpaper >/dev/null 2>&1; then
+    run "hyprpaper preload \"$BGDIR/$base\" && hyprpaper wallpaper \",$BGDIR/$base\" || true"
   else
-    echo "(no hyprpaper/swww - Hyprland wallpaper left for hyprland.conf)"
+    echo "(no swww/hyprpaper - Hyprland wallpaper via hyprland.conf)"
   fi
   echo "wallpaper: $base"
 }
@@ -58,7 +112,7 @@ do_theme() { # do_theme <name>
   read -r bg fg ac ac2 < <(palette "$1") || return 1
   run "mkdir -p \"$KYDIR\" \"$HYDIR\""
   run "cat > \"$KYDIR/furarcher-theme.conf\" <<EOF
-# furarcher $1 - generated by ricer, do not hand-edit
+# furarcher $1 - generated by ricer, do not hand-edit (dark mode)
 background #$bg
 foreground #$fg
 color1 #$ac
@@ -69,7 +123,7 @@ EOF"
     run "echo 'include furarcher-theme.conf' >> \"$KYDIR/kitty.conf\""
   fi
   run "cat > \"$HYDIR/furarcher-colors.conf\" <<EOF
-# furarcher $1 - generated by ricer
+# furarcher $1 - generated by ricer (dark)
 general {
     col.active_border = rgba(${ac}ee) rgba(${ac2}ee) 45deg
     col.inactive_border = rgba(444444aa)
@@ -78,36 +132,186 @@ EOF"
   if [ -f "$HYDIR/hyprland.conf" ] && ! grep -q "furarcher-colors.conf" "$HYDIR/hyprland.conf" 2>/dev/null; then
     run "echo 'source = ~/.config/hypr/furarcher-colors.conf' >> \"$HYDIR/hyprland.conf\""
   fi
-  echo "theme: $1 (#$ac)"
+  run "mkdir -p \"$RCACHE\" && echo \"$1\" > \"$RCACHE/theme\""
+  echo "theme: $1 (#$ac) — $(theme_desc "$1")"
+}
+
+do_darkmode() {
+  echo "forcing dark mode everywhere (GNOME/GTK/kitty/waybar/wofi)..."
+  run "mkdir -p \"$KYDIR\" \"$WBDIR\" \"$WFDIR\""
+  if command -v gsettings >/dev/null 2>&1; then
+    run "gsettings set org.gnome.desktop.interface gtk-theme 'adw-gtk3-dark' || true"
+    run "gsettings set org.gnome.desktop.interface color-scheme 'prefer-dark' || true"
+    run "gsettings set org.gnome.desktop.interface icon-theme 'Adwaita' || true"
+    # flatpak GTK dark override best-effort
+    if command -v flatpak >/dev/null 2>&1; then run "flatpak override --user --env=GTK_THEME=adw-gtk3-dark || true"; fi
+  else
+    echo "(no gsettings - GNOME dark skipped)"
+  fi
+  # kitty: ensure dark background even without theme file
+  if [ ! -f "$KYDIR/furarcher-theme.conf" ]; then
+    run "printf '# furarcher dark fallback\nbackground #1a0e1a\nforeground #f5d5ec\n' > \"$KYDIR/furarcher-theme.conf\""
+  fi
+  # waybar/wofi dark files are installed by 'ricer dock'; ensure they exist note
+  echo "darkmode: done (if waybar/wofi missing, run: ricer dock)"
+}
+
+do_dock() {
+  echo "installing mac-like top bar + bottom dock (waybar) + wofi dark + kitty love..."
+  run "mkdir -p \"$WBDIR\" \"$WFDIR\" \"$HYDIR\" \"$KYDIR\""
+  run "cp -f \"$ROOT/hypr/waybar-config.jsonc\" \"$WBDIR/furarcher-top.jsonc\""
+  run "cp -f \"$ROOT/hypr/waybar-style.css\" \"$WBDIR/furarcher-top.css\""
+  run "cp -f \"$ROOT/hypr/waybar-dock.jsonc\" \"$WBDIR/furarcher-dock.jsonc\""
+  run "cp -f \"$ROOT/hypr/waybar-dock.css\" \"$WBDIR/furarcher-dock.css\""
+  run "cp -f \"$ROOT/hypr/wofi-style.css\" \"$WFDIR/style.css\""
+  run "cp -f \"$ROOT/hypr/kitty-furarcher.conf\" \"$KYDIR/kitty-furarcher.conf\""
+  if [ -f "$KYDIR/kitty.conf" ] && ! grep -q "kitty-furarcher.conf" "$KYDIR/kitty.conf" 2>/dev/null; then
+    run "echo 'include kitty-furarcher.conf' >> \"$KYDIR/kitty.conf\""
+  fi
+  echo "dock: top bar + bottom dock + kitty love installed."
+  echo "Hyprland autostart already launches both (see hypr/hyprland.conf). Log out/in or: pkill waybar; waybar &"
+}
+
+do_macbinds() {
+  echo "installing macOS-style keybinds (SUPER = Cmd)..."
+  run "mkdir -p \"$HYDIR\""
+  run "cp -f \"$ROOT/hypr/hyprland.conf\" \"$HYDIR/hyprland.conf\""
+  if command -v gsettings >/dev/null 2>&1; then
+    # safe GNOME mac-ish tweaks: natural scroll, Super+Space launcher hint, dark
+    run "gsettings set org.gnome.desktop.peripherals.touchpad natural-scroll true || true"
+    run "gsettings set org.gnome.desktop.wm.preferences button-layout 'close,minimize,maximize:' || true"
+    echo "(GNOME: Super key = Cmd; set Keyboard -> View/Change Shortcuts to taste)"
+  fi
+  echo "macbinds: SUPER+Space launcher, SUPER+Q/W kill, SUPER+Tab switch, SUPER+1..5 spaces."
+}
+
+do_gpu() {
+  echo "== Asahi M1 GPU / ANE status =="
+  echo "arch: $(uname -m) | kernel: $(uname -r)"
+  if grep -qi asahi /proc/version 2>/dev/null || [ -f /etc/asahi-release ]; then
+    echo "Asahi kernel: YES"
+  else
+    echo "Asahi kernel: NOT detected (GPU bits below still try Mesa)"
+  fi
+  for t in glxinfo vulkaninfo; do
+    if command -v "$t" >/dev/null 2>&1; then
+      echo "--- $t ---"
+      "$t" 2>/dev/null | grep -iE "apple|asahi|agx|M1|renderer|driver" | head -8 || true
+    else
+      echo "$t: missing (dnf install -y glx-utils vulkan-tools)"
+    fi
+  done
+  if ls /dev/dri 2>/dev/null; then echo "DRI nodes: $(ls /dev/dri 2>/dev/null | tr '\n' ' ')"; else echo "DRI: /dev/dri missing"; fi
+  echo ""
+  echo "GPU: Asahi AGX via Mesa (open) — Hyprland/GNOME use it when kernel + mesa-asahi present."
+  echo "  Ensure on Asahi Fedora: sudo dnf install -y mesa-dri-drivers mesa-vulkan-drivers"
+  echo "ANE (Apple Neural Engine): NO Linux driver exists (Apple firmware, no upstream support)."
+  echo "  AI runs on CPU (+ GPU offload where Ollama/llama.cpp supports it on ARM)."
+  echo "  On 8GB M1 Air keep models <=8B Q4 (e.g. hermes3:8b) to avoid OOM."
+}
+
+do_mood() { # do_mood <name> — wallpaper + theme preset, SFW
+  case "$1" in
+    boykisser) do_wallpaper "$ROOT/wallpapers/boykisser-dark-2560x1664.svg" && do_theme "boykisser" ;;
+    mlm)       do_wallpaper "$ROOT/wallpapers/boykisser-mlm-2560x1664.svg" && do_theme "mlm" ;;
+    furry)     do_wallpaper "$ROOT/wallpapers/furry-paws-night-2560x1664.svg" && do_theme "paw" ;;
+    femboy)    do_wallpaper "$ROOT/wallpapers/fur-pride-2560x1664.svg" && do_theme "femboy" ;;
+    gaylove)   do_wallpaper "$ROOT/wallpapers/gaylove-sunset-2560x1664.svg" && do_theme "honey" ;;
+    midnight)  do_wallpaper "$ROOT/wallpapers/boykisser-dark-2560x1664.svg" && do_theme "midnight" ;;
+    bear)      do_wallpaper "$ROOT/wallpapers/furry-paws-night-2560x1664.svg" && do_theme "bear" ;;
+    achillean) do_wallpaper "$ROOT/wallpapers/boykisser-mlm-2560x1664.svg" && do_theme "achillean" ;;
+    *) echo "unknown mood: $1 (boykisser|mlm|furry|femboy|gaylove|midnight|bear|achillean)" >&2; return 1 ;;
+  esac
+  do_darkmode >/dev/null
+  echo "mood: $1 ^_^"
+}
+
+do_love() { # do_love [mlm|gaylove|furry|femboy|boykisser] — wholesome SFW note
+  m="${1:-gaylove}"
+  case "$m" in
+    mlm)       echo "💙 men loving men: two boyfriends, one blanket fort, zero rush. You + him vs. the render queue. :3" ;;
+    gaylove)   echo "💗 gay love note: holding hands counts as a workout when the world stares. Kiss on the cheek, forehead first. You are loved." ;;
+    furry)     echo "🐾 furry love: tail wags mean yes, ear flicks mean maybe-later. Consent + headpats + shared fries." ;;
+    femboy)    echo "🎀 femboy love: thigh-highs are armor (+2 CHA). You look soft AND strong. Hydrate, stretch, slay." ;;
+    boykisser) echo "😽 boykisser says: muah! cheek kiss delivered. You did great today. Drink water, text him back." ;;
+    bear)      echo "🐻 bear hug dispatched: big, warm, SFW. You are safe here, cub." ;;
+    *) echo "unknown love: $m (mlm|gaylove|furry|femboy|boykisser|bear)" >&2; return 1 ;;
+  esac
+}
+
+cmd_wallpapers() {
+  echo "bundled SFW wallpapers ($ROOT/wallpapers):"
+  ls -1 "$ROOT/wallpapers" 2>/dev/null | sed 's/^/  /' || echo "  (none)"
+  echo "use: ricer wallpaper <file> | ricer mood <name> | ricer apply [IMAGE] [theme]"
 }
 
 cmd_status() {
   echo "DE: ${XDG_CURRENT_DESKTOP:-unknown} | session: ${XDG_SESSION_TYPE:-unknown}"
+  echo "mood: boykisser + gay boys + furries + femboys (SFW dark)"
+  echo "theme: $(cat "$RCACHE/theme" 2>/dev/null || echo '(none yet — try: ricer theme boykisser)')"
   echo "gnome bg: $(gsettings get org.gnome.desktop.background picture-uri 2>/dev/null || echo '(no gsettings)')"
+  echo "gtk: $(gsettings get org.gnome.desktop.interface gtk-theme 2>/dev/null || echo '(no gsettings)')"
+  echo "color-scheme: $(gsettings get org.gnome.desktop.interface color-scheme 2>/dev/null || echo '(no gsettings)')"
   echo "kitty theme: $(ls "$KYDIR/furarcher-theme.conf" 2>/dev/null || echo '(none)')"
   echo "hypr colors: $(ls "$HYDIR/furarcher-colors.conf" 2>/dev/null || echo '(none)')"
+  echo "waybar top: $(ls "$WBDIR/furarcher-top.jsonc" 2>/dev/null || echo '(none)')"
+  echo "waybar dock: $(ls "$WBDIR/furarcher-dock.jsonc" 2>/dev/null || echo '(none)')"
   echo "wal: $(command -v wal 2>/dev/null || echo '(not installed)')"
 }
 
-# Auto-search SFW wallpapers. wallhaven (purity=100 SFW-only) + nekos.best (SFW neko).
-cmd_find() { # find <query> [count]
+# Web fetch: SFW-only wallpaper search across 3 providers.
+#   wallhaven (purity=100 SFW-only) + nekos.best (neko/husbando/kitsune SFW) + waifu.im (is_nsfw=false).
+#   Mood-aware: mlm/gaylove -> husbando + "anime boy couple"; furry -> kitsune + "fox wolf furry", etc.
+#   Env overrides for tests/offline mirrors: WALLHAVEN_BASE, NEKOS_BASE, WAIFU_BASE.
+cmd_find() { # find <query> [count] [--source=wallhaven|nekos|waifu|all]
   command -v python3 >/dev/null || { echo "need python3"; return 1; }
-  q="$1"; n="${2:-6}"
+  q="$1"; shift || true
+  n="6"; src="all"
+  for a in "$@"; do case "$a" in
+    --source=*) src="${a#--source=}" ;;
+    [0-9]*) n="$a" ;;
+  esac; done
   mkdir -p "$RCACHE"
-  echo "searching SFW wallpapers for '$q' (wallhaven purity=100)..."
-  wh=$(curl -fsSL --max-time 25 "$WH_BASE/api/v1/search?q=$(python3 -c "import urllib.parse,sys; print(urllib.parse.quote(sys.argv[1]))" "$q")&purity=100&sorting=toplist&page=1" 2>/dev/null || echo "")
-  nb=""
-  case "$q" in *[Nn]eko*|*cat*|*kitten*) echo "also checking nekos.best (SFW neko)...";
-    nb=$(curl -fsSL --max-time 25 "$NB_BASE/api/v2/neko?amount=$n" 2>/dev/null || echo "") ;;
+  # mood -> provider routing
+  nb_ep="neko"; wh_q="$q"
+  case "$q" in
+    *[Mm][Ll][Mm]*|*gay*|*Gay*|*husbando*|*boyfriend*|*achillean*|*bear*|*femboy*|*Femboy*|*boy*)
+      nb_ep="husbando"; echo "mlm/gay boys route -> nekos.best husbando (SFW)..." ;;
+    *[Ff]urry*|*fox*|*Fox*|*wolf*|*Wolf*|*kitsune*|*paw*|*Paw*)
+      nb_ep="kitsune"; echo "furry route -> nekos.best kitsune (SFW)..." ;;
+    *[Nn]eko*|*cat*|*kitten*|*[Bb]oykisser*)
+      nb_ep="neko"; echo "neko/boykisser route -> nekos.best neko (SFW)..." ;;
   esac
-  WH_JSON="$wh" NB_JSON="$nb" N="$n" Q="$q" python3 - "$RCACHE/find.json" <<'PYEOF'
+  case "$q" in
+    mlm|achillean|gaylove|boyfriend) wh_q="anime boy couple pastel" ;;
+    femboy|Femboy) wh_q="femboy pastel" ;;
+    furry|paw|fox|wolf|bear) wh_q="fox wolf furry" ;;
+    boykisser|Boykisser) wh_q="cat kiss pastel" ;;
+  esac
+  wh=""; nb=""; wa=""
+  if [ "$src" = "all" ] || [ "$src" = "wallhaven" ]; then
+    echo "searching SFW wallpapers for '$q' (wallhaven purity=100, q='$wh_q')..."
+    wh=$(curl -fsSL --max-time 25 --max-filesize 2000000 -A "furarcher-asahi/ricer (SFW)" \
+      "$WH_BASE/api/v1/search?q=$(python3 -c "import urllib.parse,sys; print(urllib.parse.quote(sys.argv[1]))" "$wh_q")&purity=100&sorting=toplist&page=1" 2>/dev/null || echo "")
+  fi
+  if [ "$src" = "all" ] || [ "$src" = "nekos" ]; then
+    echo "checking nekos.best/$nb_ep (SFW)..."
+    nb=$(curl -fsSL --max-time 25 -A "furarcher-asahi/ricer (SFW)" \
+      "$NB_BASE/api/v2/$nb_ep?amount=$n" 2>/dev/null || echo "")
+  fi
+  if [ "$src" = "all" ] || [ "$src" = "waifu" ]; then
+    echo "checking waifu.im (is_nsfw=false, SFW)..."
+    wa=$(curl -fsSL --max-time 25 -A "furarcher-asahi/ricer (SFW)" \
+      "$WA_BASE/search/?is_nsfw=false" -H "Accept: application/json" 2>/dev/null || echo "")
+  fi
+  WH_JSON="$wh" NB_JSON="$nb" WA_JSON="$wa" N="$n" Q="$q" SRC="$src" python3 - "$RCACHE/find.json" <<'PYEOF'
 import json, os, sys
 out = sys.argv[1]
 res = []
 try:
     d = json.loads(os.environ["WH_JSON"] or "{}")
     for x in d.get("data", [])[:int(os.environ["N"])]:
-        res.append({"src": "wallhaven", "id": x.get("id"),
+        res.append({"src": "wallhaven", "id": str(x.get("id", "?")),
                     "url": x.get("path"), "dims": f"{x.get('dimension_x')}x{x.get('dimension_y')}",
                     "credit": "wallhaven.cc/" + str(x.get("id", ""))})
 except Exception:
@@ -115,49 +319,131 @@ except Exception:
 try:
     d = json.loads(os.environ["NB_JSON"] or "{}")
     for x in d.get("results", [])[:int(os.environ["N"])]:
-        res.append({"src": "nekos.best", "id": x.get("url", "").split("/")[-1][:12],
-                    "url": x.get("url"), "dims": f"{x.get('dimensions', {}).get('width')}x{x.get('dimensions', {}).get('height')}",
-                    "credit": x.get("artist_name", "unknown") + " via " + x.get("source_url", "")})
+        dims = x.get("dimensions", {}) or {}
+        res.append({"src": "nekos.best", "id": (x.get("url", "").split("/")[-1][:12] or "?"),
+                    "url": x.get("url"), "dims": f"{dims.get('width')}x{dims.get('height')}",
+                    "credit": str(x.get("artist_name", "unknown")) + " via " + str(x.get("source_url", ""))})
 except Exception:
     pass
+try:
+    d = json.loads(os.environ["WA_JSON"] or "{}")
+    imgs = d.get("images", [])
+    if isinstance(imgs, dict):
+        imgs = [imgs]
+    for x in imgs[:int(os.environ["N"])]:
+        if not isinstance(x, dict):
+            continue
+        url = x.get("url")
+        if not url:
+            continue
+        w, h = x.get("width", "?"), x.get("height", "?")
+        res.append({"src": "waifu.im", "id": str(x.get("image_id", url.split("/")[-1][:12])),
+                    "url": url, "dims": f"{w}x{h}",
+                    "credit": "SFW via " + str(x.get("source", "waifu.im"))})
+except Exception:
+    pass
+res = [r for r in res if r.get("url", "").startswith("http")]
 json.dump({"query": os.environ["Q"], "results": res}, open(out, "w"), indent=1)
 print(f"found {len(res)} SFW results for '{os.environ['Q']}':")
 for i, r in enumerate(res, 1):
     print(f"  [{i}] {r['src']} {r['dims']} {r['credit']}\n      {r['url']}")
 if not res:
-    print("no results - try: fox, wolf, anime, neko, pastel")
+    print("no results - try: fox, wolf, anime, neko, pastel, mlm, femboy, boykisser")
+    print("tips: 'ricer find mlm --source=nekos' (husbando) | 'ricer find furry --source=all'")
 PYEOF
 }
 
 cmd_get() { # get <n> [--apply[=theme]]
   [ -f "$RCACHE/find.json" ] || { echo "run 'ricer find <query>' first"; return 1; }
-  apply=""; theme="pink"
+  apply=""; theme="boykisser"
   for a in "$@"; do case "$a" in --apply) apply=1;; --apply=*) apply=1; theme="${a#--apply=}";; esac; done
   idx="$1"
   url=$(python3 -c "import json,sys; print(json.load(open('$RCACHE/find.json'))['results'][int(sys.argv[1])-1]['url'])" "$idx" 2>/dev/null) \
     || { echo "no result #$idx - run 'ricer find' again"; return 1; }
+  case "$url" in http://*|https://*) ;;
+    *) echo "refusing non-http URL (safety): $url"; return 1 ;;
+  esac
   mkdir -p "$BGDIR"
   base=$(basename "${url%%\?*}")
+  [ -n "$base" ] && [ "$base" != "/" ] || base="web-$idx.png"
+  tmp="$BGDIR/.dl-$base.tmp"
   echo "downloading #$idx -> $BGDIR/$base"
-  curl -fsSL --max-time 60 -o "$BGDIR/$base" "$url" || { echo "download failed"; return 1; }
+  curl -fsSL --max-time 60 --max-filesize 26214400 -A "furarcher-asahi/ricer (SFW)" -o "$tmp" "$url" || { echo "download failed"; rm -f "$tmp"; return 1; }
+  if command -v file >/dev/null 2>&1; then
+    ftype=$(file -b "$tmp" 2>/dev/null || echo "")
+    case "$ftype" in *image*|*PNG*|*JPEG*|*SVG*|*WebP*) ;;
+      *) echo "refusing non-image download ($ftype) - deleted"; rm -f "$tmp"; return 1 ;;
+    esac
+  fi
+  mv -f "$tmp" "$BGDIR/$base"
+  echo "$(date -u +%FT%TZ) #$idx $base $url" >> "$RCACHE/downloads.log"
   echo "saved: $BGDIR/$base"
   if [ -n "$apply" ]; then do_wallpaper "$BGDIR/$base" && do_theme "$theme"; fi
 }
 
+cmd_preview() { # preview <n> — print URL + best-effort inline image
+  [ -f "$RCACHE/find.json" ] || { echo "run 'ricer find <query>' first"; return 1; }
+  idx="$1"
+  url=$(python3 -c "import json,sys; d=json.load(open('$RCACHE/find.json')); r=d['results'][int(sys.argv[1])-1]; print(r['src']+' | '+r.get('dims','?')+' | '+r['url'])" "$idx" 2>/dev/null) \
+    || { echo "no result #$idx - run 'ricer find' again"; return 1; }
+  echo "$url"
+  if command -v kitty >/dev/null 2>&1 && command -v curl >/dev/null 2>&1; then
+    tmp="/tmp/furarcher-preview-$idx.png"
+    if curl -fsSL --max-time 20 --max-filesize 15000000 -o "$tmp" "$(echo "$url" | awk -F' \\| ' '{print $NF}')" 2>/dev/null; then
+      kitty +kitten icat "$tmp" 2>/dev/null || true
+    fi
+  elif command -v chafa >/dev/null 2>&1; then
+    echo "(chafa preview: chafa <downloaded file> after 'ricer get $idx')"
+  fi
+}
+
+cmd_fetchpack() { # fetch-pack <mood> [n] [--apply-first[=theme]] — download top n web hits for a mood
+  mood="${1:-boykisser}"; count="${2:-4}"; apply_first=""
+  for a in "$@"; do case "$a" in --apply-first) apply_first=1;; --apply-first=*) apply_first=1;; esac; done
+  case "$mood" in boykisser|mlm|furry|femboy|gaylove|midnight|bear|achillean) ;;
+    *) echo "unknown pack: $mood (boykisser|mlm|furry|femboy|gaylove|midnight|bear|achillean)" >&2; return 1 ;;
+  esac
+  echo "fetching SFW web pack for mood '$mood' (top $count)..."
+  cmd_find "$mood" "$count" --source=all || return 1
+  ok=0; i=1
+  while [ "$i" -le "$count" ]; do
+    if [ "$i" = "1" ] && [ -n "$apply_first" ]; then
+      if cmd_get "$i" --apply="$mood"; then ok=$((ok+1)); fi
+    else
+      if cmd_get "$i"; then ok=$((ok+1)); fi
+    fi
+    i=$((i+1))
+  done
+  echo "pack: $ok/$count saved to $BGDIR (log: $RCACHE/downloads.log)"
+}
+
 case "${1:-status}" in
   apply)
-    img="${2:-$ROOT/wallpapers/fur-pride-2560x1664.svg}"
-    theme="${3:-pink}"
+    img="${2:-$ROOT/wallpapers/boykisser-dark-2560x1664.svg}"
+    theme="${3:-boykisser}"
     do_wallpaper "$img" && do_theme "$theme" || exit 1
+    do_darkmode
+    do_dock
+    do_macbinds
     case "$img" in *.png|*.jpg|*.jpeg)
       if command -v wal >/dev/null 2>&1; then run "wal -i \"$img\" || true"; fi ;;
     esac
-    echo "riced ^_^ ($theme)"
+    echo "riced ^_^ ($theme, dark, dock, macbinds)"
     ;;
   wallpaper) shift; [ $# -ge 1 ] || { echo 'usage: ricer wallpaper <image>'; exit 1; }; do_wallpaper "$1" ;;
-  theme) shift; [ $# -ge 1 ] || { echo 'usage: ricer theme <pink|purple|ocean|trans|rainbow|bi>'; exit 1; }; do_theme "$1" ;;
-  find) shift; [ $# -ge 1 ] || { echo 'usage: ricer find <query> [count]'; exit 1; }; cmd_find "$@" ;;
+  theme) shift; [ $# -ge 1 ] || { echo 'usage: ricer theme <name> (see: ricer themes)'; exit 1; }; do_theme "$1" ;;
+  themes) cmd_themes ;;
+  mood) shift; [ $# -ge 1 ] || { echo 'usage: ricer mood <boykisser|mlm|furry|femboy|gaylove|midnight|bear|achillean>'; exit 1; }; do_mood "$1" ;;
+  love) shift; do_love "${1:-gaylove}" ;;
+  wallpapers) cmd_wallpapers ;;
+  darkmode) do_darkmode ;;
+  dock) do_dock ;;
+  macbinds) do_macbinds ;;
+  gpu) do_gpu ;;
+  find) shift; [ $# -ge 1 ] || { echo 'usage: ricer find <query> [count] [--source=all|wallhaven|nekos|waifu]'; exit 1; }; cmd_find "$@" ;;
   "get") shift; [ $# -ge 1 ] || { echo 'usage: ricer get <n> [--apply[=theme]]'; exit 1; }; cmd_get "$@" ;;
+  preview) shift; [ $# -ge 1 ] || { echo 'usage: ricer preview <n>'; exit 1; }; cmd_preview "$@" ;;
+  fetch-pack) shift; [ $# -ge 1 ] || { echo 'usage: ricer fetch-pack <boykisser|mlm|furry|femboy|gaylove|midnight|bear|achillean> [n]'; exit 1; }; cmd_fetchpack "$@" ;;
   status) cmd_status ;;
-  *) echo "usage: ricer {apply [IMAGE] [theme]|wallpaper|theme|find|get|status} [--dry-run]"; exit 1 ;;
+  *) echo "usage: ricer {apply [IMAGE] [theme]|wallpaper|theme|themes|mood|love|wallpapers|darkmode|dock|macbinds|gpu|find|get|preview|fetch-pack|status} [--dry-run]"; exit 1 ;;
 esac

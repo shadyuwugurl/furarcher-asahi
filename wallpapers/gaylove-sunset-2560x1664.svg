@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="2560" height="1664" viewBox="0 0 2560 1664">
+<defs><linearGradient id="sun" x1="0" y1="0" x2="1" y2="1">
+<stop offset="0" stop-color="#1a0e22"/><stop offset="0.45" stop-color="#5b1e4a"/><stop offset="0.75" stop-color="#c94f6d"/><stop offset="1" stop-color="#ff9e5e"/>
+</linearGradient>
+<radialGradient id="heart" cx="0.5" cy="0.45" r="0.5">
+<stop offset="0" stop-color="#ffd9e8" stop-opacity="0.5"/><stop offset="1" stop-color="#ffd9e8" stop-opacity="0"/>
+</radialGradient></defs>
+<rect width="2560" height="1664" fill="url(#sun)"/>
+<rect width="2560" height="1664" fill="url(#heart)"/>
+<!-- rainbow arc, soft -->
+<g fill="none" stroke-width="34" opacity="0.65">
+<path d="M480 1150 A 800 800 0 0 1 2080 1150" stroke="#fe0000"/>
+<path d="M540 1150 A 740 740 0 0 1 2020 1150" stroke="#ff8c00"/>
+<path d="M600 1150 A 680 680 0 0 1 1960 1150" stroke="#ffd900"/>
+<path d="M660 1150 A 620 620 0 0 1 1900 1150" stroke="#5cff5c"/>
+<path d="M720 1150 A 560 560 0 0 1 1840 1150" stroke="#5cb8ff"/>
+<path d="M780 1150 A 500 500 0 0 1 1780 1150" stroke="#b28dff"/>
+</g>
+<!-- two paws together + heart -->
+<g fill="#ffffff" opacity="0.92">
+<ellipse cx="1150" cy="900" rx="120" ry="100"/>
+<ellipse cx="1080" cy="790" rx="45" ry="60"/>
+<ellipse cx="1150" cy="760" rx="45" ry="60"/>
+<ellipse cx="1220" cy="790" rx="45" ry="60"/>
+<ellipse cx="1410" cy="900" rx="120" ry="100"/>
+<ellipse cx="1340" cy="790" rx="45" ry="60"/>
+<ellipse cx="1410" cy="760" rx="45" ry="60"/>
+<ellipse cx="1480" cy="790" rx="45" ry="60"/>
+</g>
+<path d="M1280 700 c-35 -52 -130 -35 -130 26 c0 48 78 87 130 122 c52 -35 130 -74 130 -122 c0 -61 -95 -78 -130 -26 z" fill="#ff7ad9"/>
+<g fill="#fff0f6" font-family="sans-serif" text-anchor="middle">
+<text x="1280" y="1300" font-size="76">gay love is love ^_^</text>
+<text x="1280" y="1380" font-size="38" opacity="0.9">boyfriends • holding paws • slow dances • SFW</text>
+</g>
+</svg>

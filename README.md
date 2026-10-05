@@ -1,7 +1,7 @@
 # Furarcher - Asahi Edition (M1 MacBook Air)
 
 SFW rework inspired by [Nyarcher](https://github.com/NyarchLinux/Nyarcher) (GPL-3.0, credit NyarchLinux).
-Centered on furries + femboy pride + gay joy + neko flavor. **SFW only, 16+/17+ safe, no NSFW.**
+Centered on **boykisser + gay boys + furries + femboys + neko**, dark mode only. **SFW only, 16+/17+ safe, no NSFW.**
 
 > I could not auto-fork to your GitHub (no auth in this session). This folder is fork-ready — push it as below.
 
@@ -16,12 +16,45 @@ chmod +x furarcher.sh bin/furfetch
 ./furarcher.sh --hyprland     # experimental Hyprland on Asahi
 ```
 
-## Hyprland (“hyperland”) — yes, it's an option
+## Hyprland (“hyperland”) — dark + dock + macbinds
 
 Run `./furarcher.sh` and pick `2`, or `./furarcher.sh --hyprland`.
 Installs Hyprland + waybar/wofi/kitty/mate-polkit from **official Fedora repos**
 (verified 0.44 on F41 aarch64 — no COPR needed) and drops in
-`hypr/hyprland.conf` tuned for the M1 Air panel.
+`hypr/hyprland.conf` (M1 Air 2560x1664, scale 2) with:
+* dark mode everywhere (`ricer darkmode`: GTK adw-gtk3-dark, prefer-dark, kitty, waybar, wofi)
+* mac-like top bar + bottom dock (`ricer dock` -> `~/.config/waybar/furarcher-{top,dock}.*`)
+* macOS keybinds (`ricer macbinds`): SUPER=Cmd, SUPER+Space launcher, SUPER+Q/W close,
+  SUPER+Tab switch, SUPER+1..5 spaces, natural scroll + tap-to-click
+
+```bash
+./bin/ricer apply   # boykisser-dark wallpaper + boykisser theme + darkmode + dock + macbinds
+./bin/ricer themes  # 16 pride/love palettes: boykisser mlm achillean bear honey midnight paw ...
+./bin/ricer theme mlm|achillean|bear|honey|midnight|paw|boykisser|femboy|gay|furry|...
+./bin/ricer mood mlm|furry|femboy|gaylove|midnight|bear|achillean|boykisser  # wallpaper+theme preset
+./bin/ricer love mlm|gaylove|furry|femboy|boykisser|bear   # wholesome SFW note
+./bin/ricer wallpapers  # 5 bundled SVGs: boykisser-dark, boykisser-mlm, gaylove-sunset, furry-paws-night, fur-pride
+./bin/furfetch mlm|furry|femboy|gaylove|bear|midnight|boykisser
+./bin/ricer darkmode; ./bin/ricer dock; ./bin/ricer macbinds
+./bin/ricer gpu     # Asahi AGX Mesa check + honest ANE note
+```
+
+## Web fetch (SFW only, 3 providers)
+
+`ricer find` hits **wallhaven** (`purity=100` SFW-only) + **nekos.best**
+(neko / husbando for mlm + gay boys / kitsune for furries) + **waifu.im**
+(`is_nsfw=false`). Mood-aware routing included.
+
+```bash
+./bin/ricer find boykisser 6          # cat kiss + neko + SFW anime
+./bin/ricer find mlm 6                # husbando (gay boys, SFW) + anime couple
+./bin/ricer find furry 6               # kitsune + fox/wolf art, SFW
+./bin/ricer find femboy 6 --source=nekos
+./bin/ricer find pastel 4 --source=wallhaven|nekos|waifu|all
+./bin/ricer preview 1                 # URL + kitty inline image if available
+./bin/ricer get 1 --apply=mlm         # image-validated download, logged, optionally applied
+./bin/ricer fetch-pack gaylove 4      # top-4 SFW web hits for a mood, saved to ~/.local/share/backgrounds
+```
 
 ## GNOME vs Hyprland (“hyperland”)
 
@@ -33,7 +66,9 @@ Installs Hyprland + waybar/wofi/kitty/mate-polkit from **official Fedora repos**
 * `dnf` path (no pacman/AUR/`yay`), `aarch64` arch check, Asahi kernel/device-tree detect
 * Installs to `~/.local/bin` (no `/usr/bin` SYSTEM writes)
 * Skips x86_64-only bundles: CatgirlDownloader, WaifuDownloader, NyarchUpdater, Wizard/Tour flatpaks — they fail on ARM. Replaced with Flathub aarch64 SFW apps (Krita, Blender, Inkscape, Flatseal, Lollypop, Shortwave).
-* `furfetch` replaces `nyaofetch`/`nekofetch` with SFW paw+neko ASCII.
+* `furfetch` replaces `nyaofetch`/`nekofetch` with SFW boykisser paw+neko ASCII.
+* GPU: Asahi AGX via kernel + Mesa (`mesa-dri-drivers`, `mesa-vulkan-drivers`) — `ricer gpu` verifies.
+  ANE has no Linux driver (Apple firmware, no upstream support) — AI runs on CPU, keep <=8B Q4 on the 8GB Air.
 
 ## FurAssistant — local Hermes AI (NyarchAssistant replacement)
 

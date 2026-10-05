@@ -1,0 +1,9 @@
+/* furarcher dark boykisser mac-bar — dark mode only */
+* { font-family: "Cantarell", "Noto Sans", sans-serif; font-size: 12px; }
+window#waybar { background: rgba(18, 10, 22, 0.92); color: #f5d5ec; border-bottom: 1px solid rgba(255,122,217,0.35); }
+#workspaces button { color: #b28dff; background: transparent; border-radius: 8px; padding: 0 8px; }
+#workspaces button.active { background: #ff7ad9; color: #1a0e1a; }
+#window { color: #f5d5ec; }
+#clock { color: #ff9ecf; font-weight: bold; }
+#cpu, #memory, #battery, #network, #pulseaudio, #tray { color: #e2d5ff; padding: 0 8px; }
+#battery.warning { color: #f5a9b8; }
