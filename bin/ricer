@@ -12,7 +12,8 @@
 #   ricer dock               install waybar top-bar + bottom dock + wofi configs (mac-like)
 #   ricer macbinds           install Hyprland macOS keybinds + GNOME mac-ish tweaks (safe)
 #   ricer gpu                Asahi GPU/ANE status: Mesa AGX check + honest ANE note
-#   ricer find <query> [n] [--source=all|wallhaven|nekos|waifu]  SFW web search (3 providers)
+#   ricer auto <mood>          fully automatic: web search -> top hit -> full rice (fallback: bundled)
+#   ricer find <query> [n] [--source=all|wallhaven|nekos|waifu|safebooru|openverse]  SFW web search (5 providers)
 #   ricer get <n> [--apply[=theme]]  download result n (image-validated, logged)
 #   ricer preview <n>  show URL + kitty inline preview if available
 #   ricer fetch-pack <mood> [n]  download top-n SFW web hits for a mood
@@ -30,6 +31,8 @@ RCACHE="$HOME/.local/share/furarcher"
 WH_BASE="${WALLHAVEN_BASE:-https://wallhaven.cc}"
 NB_BASE="${NEKOS_BASE:-https://nekos.best}"
 WA_BASE="${WAIFU_BASE:-https://api.waifu.im}"
+SB_BASE="${SAFEBOORU_BASE:-https://safebooru.org}"
+OV_BASE="${OPENVERSE_BASE:-https://api.openverse.org}"
 DRY="false"
 for a in "$@"; do case "$a" in --dry-run) DRY="true";; esac; done
 run() { if [ "$DRY" = "true" ]; then echo "[dry-run] $*"; else eval "$*"; fi; }
@@ -83,6 +86,20 @@ cmd_themes() {
     printf "  %-10s %s\n" "$t" "$(theme_desc "$t")"
   done
   echo "use: ricer theme <name> | ricer mood <name>"
+}
+
+mood_theme() { # mood -> palette name (moods and palettes differ: gaylove->honey, furry->paw)
+  case "$1" in
+    boykisser) echo "boykisser" ;;
+    mlm) echo "mlm" ;;
+    furry) echo "paw" ;;
+    femboy) echo "femboy" ;;
+    gaylove) echo "honey" ;;
+    midnight) echo "midnight" ;;
+    bear) echo "bear" ;;
+    achillean) echo "achillean" ;;
+    *) echo "boykisser" ;;
+  esac
 }
 
 do_wallpaper() { # do_wallpaper <img>
@@ -259,11 +276,17 @@ cmd_status() {
   echo "wal: $(command -v wal 2>/dev/null || echo '(not installed)')"
 }
 
-# Web fetch: SFW-only wallpaper search across 3 providers.
-#   wallhaven (purity=100 SFW-only) + nekos.best (neko/husbando/kitsune SFW) + waifu.im (is_nsfw=false).
+# Web fetch: SFW-only wallpaper search across 5 providers.
+#   wallhaven (purity=100 SFW-only) + nekos.best (neko/husbando/kitsune SFW) + waifu.im (is_nsfw=false)
+#   + safebooru (SFW-only imageboard, danbooru API) + openverse (CC photos/illustration).
+#   waifu.im is kept as a best-effort source but currently 403s keyless curl
+#   (bot protection, verified 2026-10-05) — failures are silent/empty by design.
+#   Reddit/Pinterest are intentionally NOT queried: both serve login walls / JS shells
+#   to keyless curl (verified 2026-10-05). Reddit works only with an OAuth app token;
+#   Pinterest has no public search API. Safebooru covers the imageboard need SFW-only.
 #   Mood-aware: mlm/gaylove -> husbando + "anime boy couple"; furry -> kitsune + "fox wolf furry", etc.
-#   Env overrides for tests/offline mirrors: WALLHAVEN_BASE, NEKOS_BASE, WAIFU_BASE.
-cmd_find() { # find <query> [count] [--source=wallhaven|nekos|waifu|all]
+#   Env overrides for tests/offline mirrors: WALLHAVEN_BASE, NEKOS_BASE, WAIFU_BASE, SAFEBOORU_BASE, OPENVERSE_BASE.
+cmd_find() { # find <query> [count] [--source=all|wallhaven|nekos|waifu|safebooru|openverse]
   command -v python3 >/dev/null || { echo "need python3"; return 1; }
   q="$1"; shift || true
   n="6"; src="all"
@@ -288,7 +311,7 @@ cmd_find() { # find <query> [count] [--source=wallhaven|nekos|waifu|all]
     furry|paw|fox|wolf|bear) wh_q="fox wolf furry" ;;
     boykisser|Boykisser) wh_q="cat kiss pastel" ;;
   esac
-  wh=""; nb=""; wa=""
+  wh=""; nb=""; wa=""; sb=""; ov=""
   if [ "$src" = "all" ] || [ "$src" = "wallhaven" ]; then
     echo "searching SFW wallpapers for '$q' (wallhaven purity=100, q='$wh_q')..."
     wh=$(curl -fsSL --max-time 25 --max-filesize 2000000 -A "furarcher-asahi/ricer (SFW)" \
@@ -304,7 +327,28 @@ cmd_find() { # find <query> [count] [--source=wallhaven|nekos|waifu|all]
     wa=$(curl -fsSL --max-time 25 -A "furarcher-asahi/ricer (SFW)" \
       "$WA_BASE/search/?is_nsfw=false" -H "Accept: application/json" 2>/dev/null || echo "")
   fi
-  WH_JSON="$wh" NB_JSON="$nb" WA_JSON="$wa" N="$n" Q="$q" SRC="$src" python3 - "$RCACHE/find.json" <<'PYEOF'
+  # safebooru tags: SFW-only board, danbooru-style API. Mood-mapped, romantic/wholesome tags only.
+  sb_tags=$(python3 -c "import urllib.parse,sys; print(urllib.parse.quote(sys.argv[1]))" "$q")
+  case "$q" in
+    boykisser|Boykisser) sb_tags="cat_ears+kiss" ;;
+    mlm|achillean|boyfriend) sb_tags="2boys+holding_hands" ;;
+    gaylove) sb_tags="2boys+kiss" ;;
+    furry|paw|fox|wolf) sb_tags="furry" ;;
+    femboy|Femboy) sb_tags="femboy" ;;
+    bear) sb_tags="muscular" ;;
+    midnight) sb_tags="night+cat_ears" ;;
+  esac
+  if [ "$src" = "all" ] || [ "$src" = "safebooru" ]; then
+    echo "checking safebooru (SFW-only imageboard, tags='$sb_tags')..."
+    sb=$(curl -fsSL --max-time 25 -A "furarcher-asahi/ricer (SFW)" \
+      "$SB_BASE/index.php?page=dapi&s=post&q=index&json=1&limit=$n&tags=$sb_tags" 2>/dev/null || echo "")
+  fi
+  if [ "$src" = "all" ] || [ "$src" = "openverse" ]; then
+    echo "checking openverse (CC images, q='$wh_q')..."
+    ov=$(curl -fsSL --max-time 25 -A "furarcher-asahi/ricer (SFW)" \
+      "$OV_BASE/v1/images/?q=$(python3 -c "import urllib.parse,sys; print(urllib.parse.quote(sys.argv[1]))" "$wh_q")&page_size=$n" -H "Accept: application/json" 2>/dev/null || echo "")
+  fi
+  WH_JSON="$wh" NB_JSON="$nb" WA_JSON="$wa" SB_JSON="$sb" OV_JSON="$ov" N="$n" Q="$q" SRC="$src" python3 - "$RCACHE/find.json" <<'PYEOF'
 import json, os, sys
 out = sys.argv[1]
 res = []
@@ -340,6 +384,33 @@ try:
         res.append({"src": "waifu.im", "id": str(x.get("image_id", url.split("/")[-1][:12])),
                     "url": url, "dims": f"{w}x{h}",
                     "credit": "SFW via " + str(x.get("source", "waifu.im"))})
+except Exception:
+    pass
+try:
+    d = json.loads(os.environ["SB_JSON"] or "[]")
+    if isinstance(d, dict):
+        d = d.get("post", []) or []
+    for x in d[:int(os.environ["N"])]:
+        if not isinstance(x, dict):
+            continue
+        url = x.get("file_url") or x.get("sample_url")
+        if not url:
+            continue
+        if url.startswith("//"):
+            url = "https:" + url
+        res.append({"src": "safebooru", "id": str(x.get("id", "?")),
+                    "url": url, "dims": f"{x.get('width', '?')}x{x.get('height', '?')}",
+                    "credit": "safebooru.org/" + str(x.get("id", ""))})
+except Exception:
+    pass
+try:
+    d = json.loads(os.environ["OV_JSON"] or "{}")
+    for x in d.get("results", [])[:int(os.environ["N"])]:
+        if not isinstance(x, dict) or not x.get("url"):
+            continue
+        res.append({"src": "openverse", "id": str(x.get("id", "?"))[:12],
+                    "url": x["url"], "dims": f"{x.get('width', '?')}x{x.get('height', '?')}",
+                    "credit": "CC " + str(x.get("license", "?")) + " via " + str(x.get("provider", "openverse"))})
 except Exception:
     pass
 res = [r for r in res if r.get("url", "").startswith("http")]
@@ -405,16 +476,44 @@ cmd_fetchpack() { # fetch-pack <mood> [n] [--apply-first[=theme]] — download t
   esac
   echo "fetching SFW web pack for mood '$mood' (top $count)..."
   cmd_find "$mood" "$count" --source=all || return 1
+  theme="$(mood_theme "$mood")"
   ok=0; i=1
   while [ "$i" -le "$count" ]; do
     if [ "$i" = "1" ] && [ -n "$apply_first" ]; then
-      if cmd_get "$i" --apply="$mood"; then ok=$((ok+1)); fi
+      if cmd_get "$i" --apply="$theme"; then ok=$((ok+1)); fi
     else
       if cmd_get "$i"; then ok=$((ok+1)); fi
     fi
     i=$((i+1))
   done
   echo "pack: $ok/$count saved to $BGDIR (log: $RCACHE/downloads.log)"
+}
+
+cmd_auto() { # auto <mood> — fully automatic: web search -> top hit -> full rice (wallpaper+theme+dark+dock). Falls back to bundled on empty/offline.
+  mood="${1:-boykisser}"
+  case "$mood" in boykisser|mlm|furry|femboy|gaylove|midnight|bear|achillean) ;;
+    *) echo "unknown mood: $mood (boykisser|mlm|furry|femboy|gaylove|midnight|bear|achillean)" >&2; return 1 ;;
+  esac
+  theme="$(mood_theme "$mood")"
+  echo "auto-ricing '$mood' from the web (SFW, 5 providers)..."
+  if cmd_find "$mood" 4 --source=all; then
+    got=$(python3 -c "import json; print(len(json.load(open('$RCACHE/find.json'))['results']))" 2>/dev/null || echo 0)
+    if [ "${got:-0}" -gt 0 ] 2>/dev/null; then
+      echo "top web hit -> full rice..."
+      if cmd_get 1 --apply="$theme"; then
+        do_darkmode; do_dock; do_macbinds; do_love "$mood" || true
+        echo "auto-riced ^_^ (web #$mood + $theme, dark, dock, macbinds)"
+        return 0
+      fi
+      echo "web download failed - falling back to bundled '$mood'."
+    else
+      echo "web empty (offline?) - falling back to bundled '$mood'."
+    fi
+  else
+    echo "web search failed - falling back to bundled '$mood'."
+  fi
+  do_mood "$mood" && do_dock && do_macbinds
+  echo "auto-riced ^_^ (bundled $mood fallback, dark, dock, macbinds)"
 }
 
 case "${1:-status}" in
@@ -440,10 +539,11 @@ case "${1:-status}" in
   dock) do_dock ;;
   macbinds) do_macbinds ;;
   gpu) do_gpu ;;
-  find) shift; [ $# -ge 1 ] || { echo 'usage: ricer find <query> [count] [--source=all|wallhaven|nekos|waifu]'; exit 1; }; cmd_find "$@" ;;
+  find) shift; [ $# -ge 1 ] || { echo 'usage: ricer find <query> [count] [--source=all|wallhaven|nekos|waifu|safebooru|openverse]'; exit 1; }; cmd_find "$@" ;;
   "get") shift; [ $# -ge 1 ] || { echo 'usage: ricer get <n> [--apply[=theme]]'; exit 1; }; cmd_get "$@" ;;
   preview) shift; [ $# -ge 1 ] || { echo 'usage: ricer preview <n>'; exit 1; }; cmd_preview "$@" ;;
   fetch-pack) shift; [ $# -ge 1 ] || { echo 'usage: ricer fetch-pack <boykisser|mlm|furry|femboy|gaylove|midnight|bear|achillean> [n]'; exit 1; }; cmd_fetchpack "$@" ;;
+  auto) shift; cmd_auto "${1:-boykisser}" ;;
   status) cmd_status ;;
-  *) echo "usage: ricer {apply [IMAGE] [theme]|wallpaper|theme|themes|mood|love|wallpapers|darkmode|dock|macbinds|gpu|find|get|preview|fetch-pack|status} [--dry-run]"; exit 1 ;;
+  *) echo "usage: ricer {apply [IMAGE] [theme]|wallpaper|theme|themes|mood|love|wallpapers|darkmode|dock|macbinds|gpu|find|get|preview|fetch-pack|auto|status} [--dry-run]"; exit 1 ;;
 esac

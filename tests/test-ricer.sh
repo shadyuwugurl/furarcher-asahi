@@ -63,6 +63,10 @@ class H(BaseHTTPRequestHandler):
             body = b'{"results": [{"url": "http://127.0.0.1:11441/tiny.png", "dimensions": {"width": 800, "height": 600}, "artist_name": "stub", "source_url": "http://example.com"}]}'
         elif self.path.startswith("/search/"):
             body = b'{"images": [{"image_id": 4242, "url": "http://127.0.0.1:11441/tiny.png", "width": 1280, "height": 720, "source": "stub-waifu"}]}'
+        elif "page=dapi" in self.path:
+            body = b'[{"id": 777, "file_url": "http://127.0.0.1:11441/tiny.png", "sample_url": "http://127.0.0.1:11441/tiny.png", "width": 1600, "height": 900}]'
+        elif self.path.startswith("/v1/images/"):
+            body = b'{"results": [{"id": "ov-stub-1", "url": "http://127.0.0.1:11441/tiny.png", "width": 1024, "height": 768, "license": "by", "provider": "stub-flickr"}]}'
         elif self.path == "/tiny.png":
             body = open(root + "/tiny.png", "rb").read()
         else:
@@ -74,10 +78,12 @@ PYEOF
 STUBAPI=$!
 trap 'kill $STUBAPI 2>/dev/null; wait $STUBAPI 2>/dev/null; rm -rf "$TESTHOME"' EXIT
 sleep 1
-export WALLHAVEN_BASE="http://127.0.0.1:11441" NEKOS_BASE="http://127.0.0.1:11441" WAIFU_BASE="http://127.0.0.1:11441"
+export WALLHAVEN_BASE="http://127.0.0.1:11441" NEKOS_BASE="http://127.0.0.1:11441" WAIFU_BASE="http://127.0.0.1:11441" SAFEBOORU_BASE="http://127.0.0.1:11441" OPENVERSE_BASE="http://127.0.0.1:11441"
 "$R" find neko 2 | grep -q "\[1\] wallhaven" && pass "find wallhaven" || fail "find wallhaven"
 "$R" find neko 2 | grep -q "nekos.best 800x600" && pass "find nekos" || fail "find nekos"
 "$R" find neko 2 | grep -q "waifu.im 1280x720" && pass "find waifu" || fail "find waifu"
+"$R" find neko 2 | grep -q "safebooru 1600x900" && pass "find safebooru" || fail "find safebooru"
+"$R" find neko 2 | grep -q "openverse 1024x768" && pass "find openverse" || fail "find openverse"
 "$R" find mlm 2 --source=nekos | grep -q "nekos.best" && pass "find mlm nekos route" || fail "find mlm nekos route"
 "$R" find furry 2 --source=nekos | grep -q "nekos.best" && pass "find furry nekos route" || fail "find furry nekos route"
 "$R" find pastel 2 --source=wallhaven | grep -q "wallhaven" && pass "find source wallhaven" || fail "find source wallhaven"
@@ -88,7 +94,12 @@ export WALLHAVEN_BASE="http://127.0.0.1:11441" NEKOS_BASE="http://127.0.0.1:1144
 "$R" fetch-pack boykisser 2 2>&1 | grep -q "pack:" && pass "fetch-pack" || fail "fetch-pack"
 "$R" fetch-pack bogus 2 >/dev/null 2>&1 && fail "bad pack rejected" || pass "bad pack rejected"
 "$R" get 9 >/dev/null 2>&1 && fail "bad index rejected" || pass "bad index rejected"
-WALLHAVEN_BASE="http://127.0.0.1:9" NEKOS_BASE="http://127.0.0.1:9" WAIFU_BASE="http://127.0.0.1:9" "$R" find fox 2 2>&1 | grep -q "no results" && pass "find graceful" || fail "find graceful"
+WALLHAVEN_BASE="http://127.0.0.1:9" NEKOS_BASE="http://127.0.0.1:9" WAIFU_BASE="http://127.0.0.1:9" SAFEBOORU_BASE="http://127.0.0.1:9" OPENVERSE_BASE="http://127.0.0.1:9" "$R" find fox 2 2>&1 | grep -q "no results" && pass "find graceful" || fail "find graceful"
+"$R" fetch-pack gaylove 2 --apply-first >/dev/null 2>&1 && grep -q "ff9e5e" "$TESTHOME/.config/kitty/furarcher-theme.conf" && pass "fetch-pack gaylove apply-first (honey)" || fail "fetch-pack gaylove apply-first (honey)"
+"$R" auto boykisser 2>&1 | grep -q "auto-riced" && pass "auto boykisser" || fail "auto boykisser"
+"$R" auto gaylove 2>&1 | grep -q "auto-riced" && grep -q "ff9e5e" "$TESTHOME/.config/kitty/furarcher-theme.conf" && pass "auto gaylove honey" || fail "auto gaylove honey"
+"$R" auto bogus >/dev/null 2>&1 && fail "bad auto rejected" || pass "bad auto rejected"
+WALLHAVEN_BASE="http://127.0.0.1:9" NEKOS_BASE="http://127.0.0.1:9" WAIFU_BASE="http://127.0.0.1:9" SAFEBOORU_BASE="http://127.0.0.1:9" OPENVERSE_BASE="http://127.0.0.1:9" "$R" auto furry 2>&1 | grep -q "fallback" && pass "auto offline fallback" || fail "auto offline fallback"
 
 "$R" theme boykisser >/dev/null && grep -q "ff7ad9" "$TESTHOME/.config/kitty/furarcher-theme.conf" && pass "boykisser theme" || fail "boykisser theme"
 "$R" darkmode >/dev/null && pass "darkmode" || fail "darkmode"

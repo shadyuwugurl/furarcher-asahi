@@ -39,18 +39,24 @@ Installs Hyprland + waybar/wofi/kitty/mate-polkit from **official Fedora repos**
 ./bin/ricer gpu     # Asahi AGX Mesa check + honest ANE note
 ```
 
-## Web fetch (SFW only, 3 providers)
+## Web fetch (SFW only, 5 providers + full-auto)
 
 `ricer find` hits **wallhaven** (`purity=100` SFW-only) + **nekos.best**
-(neko / husbando for mlm + gay boys / kitsune for furries) + **waifu.im**
-(`is_nsfw=false`). Mood-aware routing included.
+(neko / husbando for mlm + gay boys / kitsune for furries) + **safebooru**
+(SFW-only imageboard: `cat_ears+kiss`, `2boys+holding_hands`, `femboy`…) +
+**openverse** (CC photos, with license credit) + **waifu.im** (best-effort —
+currently 403s keyless curl, fails silent). Mood-aware routing included.
+Reddit/Pinterest are out by design: both serve login walls to keyless curl
+(verified 2026-10-05) — Reddit needs an OAuth app, Pinterest has no public API.
 
 ```bash
+./bin/ricer auto boykisser           # search web -> top hit -> full rice, bundled fallback if offline
+./bin/ricer auto gaylove             # same, honey theme + love note
 ./bin/ricer find boykisser 6          # cat kiss + neko + SFW anime
 ./bin/ricer find mlm 6                # husbando (gay boys, SFW) + anime couple
 ./bin/ricer find furry 6               # kitsune + fox/wolf art, SFW
-./bin/ricer find femboy 6 --source=nekos
-./bin/ricer find pastel 4 --source=wallhaven|nekos|waifu|all
+./bin/ricer find femboy 6 --source=safebooru
+./bin/ricer find pastel 4 --source=wallhaven|nekos|waifu|safebooru|openverse|all
 ./bin/ricer preview 1                 # URL + kitty inline image if available
 ./bin/ricer get 1 --apply=mlm         # image-validated download, logged, optionally applied
 ./bin/ricer fetch-pack gaylove 4      # top-4 SFW web hits for a mood, saved to ~/.local/share/backgrounds
