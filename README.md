@@ -7,13 +7,29 @@ Centered on **boykisser + gay boys + furries + femboys + neko**, dark mode only.
 
 ## Quick start on Asahi Fedora Remix (M1 Air)
 
+Via Homebrew (recommended — no clone needed):
+
 ```bash
+brew tap shadyuwugurl/furarcher-asahi
+brew trust --formula shadyuwugurl/furarcher-asahi/furarcher-asahi  # Linux only, one-time
+brew install furarcher-asahi
+furarcher --check-only   # sanity check
+furarcher                # interactive: pick GNOME or Hyprland
+furarcher --gnome        # stable (recommended)
+furarcher --hyprland     # Hyprland on Asahi
+ricer auto boykisser     # fully automatic web rice
+```
+
+From a git clone instead:
+
+```bash
+git clone https://github.com/shadyuwugurl/furarcher-asahi.git
 cd furarcher-asahi
 chmod +x furarcher.sh bin/furfetch
 ./furarcher.sh --check-only   # sanity check
 ./furarcher.sh                # interactive: pick GNOME or Hyprland
 ./furarcher.sh --gnome        # stable (recommended)
-./furarcher.sh --hyprland     # experimental Hyprland on Asahi
+./furarcher.sh --hyprland     # Hyprland on Asahi
 ```
 
 ## Hyprland (“hyperland”) — dark + dock + macbinds
