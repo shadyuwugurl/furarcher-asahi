@@ -237,28 +237,31 @@ do_darkmode() {
 do_dock() {
   echo "installing mac-like top bar + bottom dock (waybar) + wofi dark + kitty love..."
   run "mkdir -p \"$WBDIR\" \"$WFDIR\" \"$HYDIR\" \"$KYDIR\""
-  run "cp -f \"$ROOT/hypr/waybar-config.jsonc\" \"$WBDIR/furarcher-top.jsonc\""
-  run "cp -f \"$ROOT/hypr/waybar-style.css\" \"$WBDIR/furarcher-top.css\""
-  run "cp -f \"$ROOT/hypr/waybar-dock.jsonc\" \"$WBDIR/furarcher-dock.jsonc\""
-  run "cp -f \"$ROOT/hypr/waybar-dock.css\" \"$WBDIR/furarcher-dock.css\""
-  run "cp -f \"$ROOT/hypr/wofi-style.css\" \"$WFDIR/style.css\""
-  run "cp -f \"$ROOT/hypr/kitty-furarcher.conf\" \"$KYDIR/kitty-furarcher.conf\""
+  run "cp -f \"$ROOT/config/hypr/waybar-config.jsonc\" \"$WBDIR/furarcher-top.jsonc\""
+  run "cp -f \"$ROOT/config/hypr/waybar-style.css\" \"$WBDIR/furarcher-top.css\""
+  run "cp -f \"$ROOT/config/hypr/waybar-dock.jsonc\" \"$WBDIR/furarcher-dock.jsonc\""
+  run "cp -f \"$ROOT/config/hypr/waybar-dock.css\" \"$WBDIR/furarcher-dock.css\""
+  run "cp -f \"$ROOT/config/wofi-style.css\" \"$WFDIR/style.css\""
+  run "cp -f \"$ROOT/config/kitty-furarcher.conf\" \"$KYDIR/kitty-furarcher.conf\""
+  run "mkdir -p \"$HOME/.config/mako\""
+  run "cp -f \"$ROOT/config/mako-config\" \"$HOME/.config/mako/config\""
+  run "makoctl reload 2>/dev/null || true"
   if [ -f "$KYDIR/kitty.conf" ] && ! grep -q "kitty-furarcher.conf" "$KYDIR/kitty.conf" 2>/dev/null; then
     run "echo 'include kitty-furarcher.conf' >> \"$KYDIR/kitty.conf\""
   fi
   echo "dock: top bar + bottom dock + kitty love installed."
-  echo "Hyprland autostart already launches both (see hypr/hyprland.conf). Log out/in or: pkill waybar; waybar &"
+  echo "Hyprland autostart already launches both (see config/hypr/hyprland.conf). Log out/in or: pkill waybar; waybar &"
 }
 
 do_macbinds() {
   echo "installing macOS-style keybinds (SUPER = Cmd)..."
   run "mkdir -p \"$HYDIR\""
-  run "cp -f \"$ROOT/hypr/hyprland.conf\" \"$HYDIR/hyprland.conf\""
+  run "cp -f \"$ROOT/config/hypr/hyprland.conf\" \"$HYDIR/hyprland.conf\""
   if command -v gsettings >/dev/null 2>&1; then
     # GNOME mac parity: traffic-light side, natural scroll, mac shortcut order
     run "gsettings set org.gnome.desktop.peripherals.touchpad natural-scroll true || true"
     run "gsettings set org.gnome.desktop.wm.preferences button-layout 'close,minimize,maximize:' || true"
-    run "gsettings set org.gnome.desktop.wm.keybindings close \"['<Super>q\",\"<Alt>F4\"]\" || true"
+    run "gsettings set org.gnome.desktop.wm.keybindings close \"['<Super>q', '<Alt>F4']\" || true"
     run "gsettings set org.gnome.desktop.wm.keybindings switch-applications \"['<Super>Tab']\" || true"
     run "gsettings set org.gnome.desktop.wm.keybindings switch-input-source \"['<Control>space']\" || true"
     run "gsettings set org.gnome.settings-daemon.plugins.media-keys screenshot \"['<Super><Shift>3']\" || true"

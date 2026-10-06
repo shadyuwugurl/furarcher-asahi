@@ -1,0 +1,43 @@
+#!/bin/bash
+# make-themes - regenerate themes/<mood>/ static packs from the palette table.
+# Mirror of palette()/mood_theme()/mood_svg() in bin/ricer — keep in sync.
+# Usage: ./bin/make-themes
+set -u
+cd "$(dirname "$0")/.." || exit 1
+
+# mood|wallpaper|bg fg accent accent2
+PACKS="
+boykisser|wallpapers/boykisser-dark-2560x1664.svg|1a0e1a f5d5ec ff7ad9 b28dff
+mlm|wallpapers/boykisser-mlm-2560x1664.svg|0b1e22 eafcff 078d70 7ab2ff
+furry|wallpapers/furry-paws-night-2560x1664.svg|0a0f1e f5d5ec b28dff ff9ecf
+femboy|wallpapers/fur-pride-2560x1664.svg|14101e ffe4f4 7ad9ff ff9ecf
+gaylove|wallpapers/gaylove-sunset-2560x1664.svg|1c1008 fff3e0 ff9e5e ffb3c8
+midnight|wallpapers/boykisser-dark-2560x1664.svg|0d0a18 e2d5ff ff7ad9 5cb8ff
+bear|wallpapers/furry-paws-night-2560x1664.svg|171008 f5e8d5 d68c3a 8a5a2b
+achillean|wallpapers/boykisser-mlm-2560x1664.svg|0e1a2b f0f6ff 5cb8ff ffd166
+"
+
+echo "$PACKS" | grep -v '^$' | while IFS='|' read -r mood svg colors; do
+  set -- $colors; bg=$1; fg=$2; ac=$3; ac2=$4
+  d="themes/$mood"
+  mkdir -p "$d"
+  ln -sf "../../$svg" "$d/wallpaper.svg"
+  cat > "$d/kitty-theme.conf" <<EOF
+# furarcher $mood - static pack (see bin/make-themes; live version: ricer theme)
+background #$bg
+foreground #$fg
+color1 #$ac
+color5 #$ac
+color13 #$ac2
+EOF
+  cat > "$d/hypr-colors.conf" <<EOF
+# furarcher $mood - static pack (see bin/make-themes; live version: ricer theme)
+general {
+    col.active_border = rgba(${ac}ee) rgba(${ac2}ee) 45deg
+    col.inactive_border = rgba(444444aa)
+}
+EOF
+  echo "$mood" > "$d/mood.txt"
+  echo "pack: $mood"
+done
+echo "done: themes/ rebuilt (ricer remains source of truth at runtime)"

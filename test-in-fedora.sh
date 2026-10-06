@@ -29,7 +29,7 @@ printf '1\nn\nn\nY\nY\nn\nn\nn\nn\nn\n' | env HOME="$TESTHOME" ./furarcher.sh >/
 [ -x "$TESTHOME/.local/bin/furfetch" ] && pass "furfetch installed" || fail "furfetch installed"
 [ -f "$TESTHOME/.local/share/backgrounds/fur-pride-2560x1664.svg" ] && pass "wallpapers installed" || fail "wallpapers installed"
 "$TESTHOME/.local/bin/furfetch" >/dev/null 2>&1 && pass "furfetch runs" || fail "furfetch runs"
-[ -f "hypr/hyprland.conf" ] && grep -q "eDP-1,2560x1664" hypr/hyprland.conf && pass "hypr conf M1 Air" || fail "hypr conf"
+[ -f "config/hypr/hyprland.conf" ] && grep -q "eDP-1,2560x1664" config/hypr/hyprland.conf && pass "hypr conf M1 Air" || fail "hypr conf"
 rm -rf "$TESTHOME"
 
 echo "== 5. dnf sanity (no install) =="
