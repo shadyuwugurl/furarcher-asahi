@@ -1,8 +1,8 @@
 class FurarcherAsahi < Formula
   desc "SFW furry/femboy Asahi Linux customizer + local Hermes AI companion"
   homepage "https://github.com/shadyuwugurl/furarcher-asahi"
-  url "https://github.com/shadyuwugurl/furarcher-asahi/releases/download/v0.6.3/furarcher-asahi-0.6.3.tar.gz"
-  sha256 "f6d1cae53d0407a83a8d3e48da8e01d8018c1cce6f2616deccb3d799ee3ad30b"
+  url "https://github.com/shadyuwugurl/furarcher-asahi/releases/download/v0.6.4/furarcher-asahi-0.6.4.tar.gz"
+  sha256 "82ce2566ae35faef6722ce42c0c4d9afa320ab28b7aba60158fe80cfec52c32a"
   license "GPL-3.0-only"
 
   depends_on "python@3.14"
