@@ -86,7 +86,7 @@ Apple firmware before Linux loads — no Linux tool can change them (muting the
 Mac chime needs macOS NVRAM). Everything *after* firmware is themeable:
 
 ```bash
-./bin/ricer chime boykisser  # login chime (synthesized WAV, user service, no sudo)
+./bin/ricer chime boykisser  # login chime: happy yips + kiss (no sudo; yippee/mlm too)
 ./bin/ricer chime off        # silence it
 ./bin/ricer grub boykisser   # GRUB menu background (sudo, backup, grub2-mkconfig)
 ./bin/ricer grub restore

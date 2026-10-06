@@ -147,15 +147,24 @@ echo "fake" > "$PLYMOUTH_THEMES_DIR/spinner/watermark.png"
 
 python3 sounds/make-chime.py boykisser "$TESTHOME/c1.wav" && pass "chime synth" || fail "chime synth"
 python3 -c "import wave; w=wave.open('$TESTHOME/c1.wav'); assert w.getframerate()==44100 and w.getnframes()>0" && pass "chime wav valid" || fail "chime wav valid"
-python3 - "$TESTHOME/c1.wav" <<'PYEOF' && pass "chime has kiss" || fail "chime has kiss"
+python3 sounds/make-chime.py yippee "$TESTHOME/c3.wav" && pass "yippee synth" || fail "yippee synth"
+python3 - "$TESTHOME/c1.wav" 2 0.40 0.60 "$TESTHOME/c3.wav" 3 0.60 0.75 <<'PYEOF' && pass "chime has yips+kiss" || fail "chime has yips+kiss"
 import struct, sys, wave
-w = wave.open(sys.argv[1]); n = w.getnframes(); rate = w.getframerate()
-x = [v / 32768 for v in struct.unpack(f'<{n}h', w.readframes(n))]
-def zcr(a):
-    return sum(1 for i in range(1, len(a)) if (a[i] >= 0) != (a[i-1] >= 0)) / len(a)
-smack = x[int(0.02*rate):int(0.12*rate)]
-motif = x[int(0.60*rate):int(0.90*rate)]
-assert 0.15 < zcr(smack) < 0.60 and zcr(motif) < 0.10 and max(abs(v) for v in x) <= 1.0
+args = sys.argv[1:]
+for wav, need, w0, w1 in [(args[0], int(args[1]), float(args[2]), float(args[3])),
+                          (args[4], int(args[5]), float(args[6]), float(args[7]))]:
+    w = wave.open(wav); n = w.getnframes(); rate = w.getframerate()
+    x = [v / 32768 for v in struct.unpack(f'<{n}h', w.readframes(n))]
+    seg = x[:int(0.8*rate)]
+    win = int(0.005*rate)
+    env = [max(abs(v) for v in seg[i:i+win]) for i in range(0, len(seg)-win, win)]
+    thr = 0.35*max(env); peaks = 0; last = -10**9
+    for i in range(1, len(env)-1):
+        if env[i] > thr and env[i] >= env[i-1] and env[i] >= env[i+1] and (i-last)*0.005 > 0.09:
+            peaks += 1; last = i
+    smack = x[int(w0*rate):int(w1*rate)]
+    zcr = sum(1 for i in range(1, len(smack)) if (smack[i] >= 0) != (smack[i-1] >= 0)) / len(smack)
+    assert peaks >= need and zcr > 0.12 and max(abs(v) for v in x) <= 1.0, (wav, peaks, zcr)
 PYEOF
 python3 sounds/make-chime.py bogus "$TESTHOME/c2.wav" >/dev/null 2>&1 && fail "bad chime mood rejected" || pass "bad chime mood rejected"
 "$R" chime bogus >/dev/null 2>&1 && fail "bad chime rejected" || pass "bad chime rejected"
@@ -163,6 +172,7 @@ python3 sounds/make-chime.py bogus "$TESTHOME/c2.wav" >/dev/null 2>&1 && fail "b
 [ -f "$TESTHOME/.local/share/sounds/furarcher-chime-boykisser.wav" ] && pass "chime wav saved" || fail "chime wav saved"
 grep -q "ExecStart=.*ffplay" "$TESTHOME/.config/systemd/user/furarcher-chime.service" && pass "chime unit" || fail "chime unit"
 grep -q "systemctl --user enable" "$TESTHOME/calls.log" && pass "chime enabled" || fail "chime enabled"
+"$R" chime yippee >/dev/null && [ -f "$TESTHOME/.local/share/sounds/furarcher-chime-yippee.wav" ] && pass "yippee install" || fail "yippee install"
 "$R" chime off >/dev/null && pass "chime off" || fail "chime off"
 grep -q "ModuleName=two-step" plymouth/furarcher.plymouth && pass "plymouth theme file" || fail "plymouth theme file"
 grep -q "0xff7ad9" plymouth/furarcher.plymouth && pass "plymouth pink" || fail "plymouth pink"

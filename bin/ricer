@@ -13,7 +13,7 @@
 #   ricer macbinds           install Hyprland macOS keybinds + GNOME mac-ish tweaks (safe)
 #   ricer mactheme           install WhiteSur-Dark GTK (mac traffic lights, needs network)
 #   ricer gpu                Asahi GPU/ANE status: Mesa AGX check + honest ANE note
-#   ricer chime [mood|off]   login chime (synthesized WAV, user systemd unit, no sudo)
+#   ricer chime [mood|off]   login chime: happy yips + kiss (synth WAV, user unit, no sudo)
 #   ricer grub [mood|restore]  GRUB menu art (sudo, backup kept)
 #   ricer splash [mood|restore] Plymouth boot splash (sudo + initramfs rebuild)
 #     Firmware limits: power-on Apple logo + chime are Apple firmware (pre-Linux,
@@ -328,15 +328,15 @@ to_png() { # to_png <svg> <width> <out.png> — rsvg -> inkscape -> convert -> s
   echo "PNG render failed (no converter and stdlib fallback failed)"; return 1
 }
 
-do_chime() { # chime [boykisser|mlm|off] — login chime via user systemd unit (no sudo)
+do_chime() { # chime [boykisser|mlm|yippee|off] — login chime via user systemd unit (no sudo)
   m="${1:-boykisser}"
   if [ "$m" = "off" ]; then
     run "systemctl --user disable --now furarcher-chime.service || true"
     echo "chime: off"
     return 0
   fi
-  case "$m" in boykisser|mlm) ;;
-    *) echo "unknown chime: $m (boykisser|mlm|off)" >&2; return 1 ;;
+  case "$m" in boykisser|mlm|yippee) ;;
+    *) echo "unknown chime: $m (boykisser|mlm|yippee|off)" >&2; return 1 ;;
   esac
   command -v python3 >/dev/null || { echo "need python3"; return 1; }
   run "mkdir -p \"$HOME/.local/share/sounds\" \"$HOME/.config/systemd/user\""

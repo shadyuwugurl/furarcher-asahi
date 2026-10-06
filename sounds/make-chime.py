@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Synthesize a SFW boykisser login chime: a kiss smack + soft mwah + motif.
+"""Synthesize a SFW boykisser login chime: happy yips + kiss smack + motif.
 Stdlib only, no deps, no binary assets, deterministic (seeded).
-Usage: make-chime.py <boykisser|mlm> <out.wav>
+Usage: make-chime.py <boykisser|mlm|yippee> <out.wav>
 """
 import math
 import random
@@ -12,14 +12,16 @@ import wave
 RATE = 44100
 random.seed(99)
 MOODS = {
-    # bright major arpeggio after the kiss
-    "boykisser": [659.25, 830.61, 987.77, 1318.51],
-    # warm lower triad after the kiss
-    "mlm": [440.00, 554.37, 659.25, 880.00],
+    # yip-yip + kiss + bright major arpeggio
+    "boykisser": {"yips": [700, 820], "motif": [659.25, 830.61, 987.77, 1318.51]},
+    # yip-yip (lower) + kiss + warm triad
+    "mlm": {"yips": [560, 660], "motif": [440.00, 554.37, 659.25, 880.00]},
+    # pure excitement: triple ascending yip-yip-yip + kiss, no long motif
+    "yippee": {"yips": [620, 760, 920], "motif": [1318.51]},
 }
 NOTE_LEN = 0.34
 TAIL = 0.25
-MOTIF_AT = 0.28
+YIP_LEN = 0.16
 
 
 def lowpass(data, cutoff):
@@ -61,6 +63,28 @@ def mwah(dur=0.20, f0=700.0, f1=340.0):
     return out
 
 
+def yip(base=700.0, dur=YIP_LEN):
+    """Happy puppy yip: fast rising chirp, harmonic bark buzz, AM wobble."""
+    n = int(dur * RATE)
+    out = []
+    phases = [0.0] * 7
+    for i in range(n):
+        t = i / RATE
+        frac = t / dur
+        f = base * (1.0 + 0.75 * frac) if frac < 0.55 else base * 1.41 - (base * 0.55) * (frac - 0.55)
+        s = 0.0
+        for k in range(1, 8):
+            phases[k - 1] += 2.0 * math.pi * k * f / RATE
+            s += math.sin(phases[k - 1]) / k
+        wobble = 1.0 + 0.25 * math.sin(2.0 * math.pi * 28.0 * t)
+        attack = min(1.0, t / 0.003)
+        env = attack * math.exp(-2.2 * t / dur)
+        breath = random.uniform(-1, 1) * 0.12 if t < 0.02 else 0.0
+        out.append((s * 0.5 * wobble + breath) * env)
+    peak = max(1e-6, max(abs(v) for v in out))
+    return [v / peak * 0.9 for v in out]
+
+
 def tone(freq, n):
     out = []
     for i in range(n):
@@ -81,13 +105,18 @@ def mix(base, add, at):
 
 def main():
     if len(sys.argv) != 3 or sys.argv[1] not in MOODS:
-        print(f"usage: {sys.argv[0]} <boykisser|mlm> <out.wav>", file=sys.stderr)
+        print(f"usage: {sys.argv[0]} <boykisser|mlm|yippee> <out.wav>", file=sys.stderr)
         return 1
+    cfg = MOODS[sys.argv[1]]
     s = []
-    s = mix(s, smack(), int(0.02 * RATE))
-    s = mix(s, mwah(), int(0.10 * RATE))
-    pos = int(MOTIF_AT * RATE)
-    for f in MOODS[sys.argv[1]]:
+    pos = int(0.02 * RATE)
+    for base in cfg["yips"]:
+        s = mix(s, yip(base), pos)
+        pos += int((YIP_LEN + 0.045) * RATE)
+    s = mix(s, smack(), pos)
+    s = mix(s, mwah(), pos + int(0.08 * RATE))
+    pos += int(0.22 * RATE)
+    for f in cfg["motif"]:
         s = mix(s, tone(f, int(NOTE_LEN * RATE)), pos)
         pos += int(NOTE_LEN * RATE)
     s += [0.0] * int(TAIL * RATE)
@@ -97,7 +126,7 @@ def main():
         w.setsampwidth(2)
         w.setframerate(RATE)
         w.writeframes(b"".join(struct.pack("<h", int(x / peak * 26000)) for x in s))
-    print(f"chime: {sys.argv[2]} ({len(s) / RATE:.1f}s, kiss + motif)")
+    print(f"chime: {sys.argv[2]} ({len(s) / RATE:.1f}s, yips + kiss + motif)")
     return 0
 
 

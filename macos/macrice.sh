@@ -143,7 +143,7 @@ do_shots() {
 do_chime() {
   echo "== login chime ($MOOD, afplay LaunchAgent) =="
   run "mkdir -p \"$HOME/.local/share/sounds\" \"$HOME/Library/LaunchAgents\""
-  m="$MOOD"; case "$m" in boykisser|mlm) ;; *) m="boykisser" ;; esac
+  m="$MOOD"; case "$m" in boykisser|mlm|yippee) ;; *) m="boykisser" ;; esac
   wav="$HOME/.local/share/sounds/furarcher-chime-$m.wav"
   run "python3 \"$ROOT/sounds/make-chime.py\" \"$m\" \"$wav\"" || return 1
   run "cat > \"$HOME/Library/LaunchAgents/furarcher-chime.plist\" <<EOF
