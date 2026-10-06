@@ -135,15 +135,11 @@ do_wallpaper() { # do_wallpaper <img>
     esac
     if [ -n "$hp" ] && { [ -f "$hp" ] || [ "$DRY" = "true" ]; }; then
       run "mkdir -p \"$HYDIR\""
+      # hyprpaper classic syntax (0.8 rejects brace blocks): preload + monitor,path lines
       run "cat > \"$HYDIR/hyprpaper.conf\" <<EOF
 preload = $hp
-wallpaper = {
-    monitor = eDP-1
-    path = $hp
-}
-wallpaper = {
-    path = $hp
-}
+wallpaper = eDP-1,$hp
+wallpaper = ,$hp
 splash = false
 ipc = on
 EOF"

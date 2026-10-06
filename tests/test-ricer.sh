@@ -133,6 +133,8 @@ done
 "$R" love furry | grep -qi "furry" && pass "love furry" || fail "love furry"
 "./bin/furfetch" mlm >/dev/null 2>&1 && pass "furfetch mlm" || fail "furfetch mlm"
 "./bin/furfetch" gaylove >/dev/null 2>&1 && pass "furfetch gaylove" || fail "furfetch gaylove"
+python3 -c "import json; [json.load(open(f)) for f in ['hypr/waybar-config.jsonc','hypr/waybar-dock.jsonc']]" 2>/dev/null && pass "waybar json valid" || fail "waybar json valid"
+grep -q "^wallpaper = eDP-1," bin/ricer && pass "hyprpaper classic syntax" || fail "hyprpaper classic syntax"
 
 # --- boot: chime/grub/splash (stubbed sudo/system services, isolated HOME) ---
 printf '#!/bin/bash\necho "sudo $*" >> "$TESTHOME/calls.log"\n' > "$STUBBIN/sudo"
