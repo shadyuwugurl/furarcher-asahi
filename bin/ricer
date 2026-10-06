@@ -57,6 +57,7 @@ palette() { # palette <name> -> "bg fg accent accent2"
     honey)  echo "1c1008 fff3e0 ff9e5e ffb3c8" ;;
     midnight) echo "0d0a18 e2d5ff ff7ad9 5cb8ff" ;;
     paw)    echo "0a0f1e f5d5ec b28dff ff9ecf" ;;
+    goldengate) echo "171008 f5e8d5 ff6b35 ffb627" ;;
     purple) echo "120e1e e2d5ff b28dff d0b3ff" ;;
     ocean)  echo "0b1620 d5ecf5 7ad9ff a3e4ff" ;;
     trans)  echo "141821 f5f5f5 5bcffa f5a9b8" ;;
@@ -79,6 +80,7 @@ theme_desc() {
     honey) echo "honey (gay love) — sunset pinks + amber. Slow-dance / holding-hands mood." ;;
     midnight) echo "midnight kiss — boykisser after dark: pink + ice blue on violet-black." ;;
     paw) echo "paw (furry night) — lavender + pink on starry navy. Night-walk constellations." ;;
+    goldengate) echo "goldengate — macOS 27 Golden Gate vibes: bridge-orange + sunset gold on warm black. Refined glass, uniform chrome." ;;
     purple) echo "purple — royal lavender haze." ;;
     ocean) echo "ocean — cool Asahi blues." ;;
     trans) echo "trans — light blue / pink / white pride." ;;
@@ -89,7 +91,7 @@ theme_desc() {
 
 cmd_themes() {
   echo "furarcher pride/love palettes (all dark-mode, SFW):"
-  for t in boykisser pink femboy gay furry mlm achillean bear honey midnight paw purple ocean trans rainbow bi; do
+  for t in boykisser pink femboy gay furry mlm achillean bear honey midnight paw goldengate purple ocean trans rainbow bi; do
     printf "  %-10s %s\n" "$t" "$(theme_desc "$t")"
   done
   echo "use: ricer theme <name> | ricer mood <name>"

@@ -120,7 +120,7 @@ grep -q "map super+c copy_to_clipboard" "$TESTHOME/.config/kitty/kitty-furarcher
 [ ! -d "$TESTHOME/.themes" ] && pass "mactheme no writes" || fail "mactheme no writes"
 "$R" gpu 2>&1 | grep -q "ANE" && pass "gpu status" || fail "gpu status"
 "$R" themes | grep -q "mlm" && pass "themes list mlm" || fail "themes list mlm"
-for t in mlm achillean bear honey midnight paw furry gay femboy; do
+for t in mlm achillean bear honey midnight paw furry gay femboy goldengate; do
   "$R" theme "$t" >/dev/null 2>&1 && pass "theme $t" || fail "theme $t"
 done
 "$R" wallpapers | grep -q "boykisser-mlm" && pass "wallpapers list" || fail "wallpapers list"
