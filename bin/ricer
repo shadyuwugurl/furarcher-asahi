@@ -14,6 +14,7 @@
 #   ricer mactheme           install WhiteSur-Dark GTK (mac traffic lights, needs network)
 #   ricer gpu                Asahi GPU/ANE status: Mesa AGX check + honest ANE note
 #   ricer chime [mood|off]   login chime: happy yips + kiss (synth WAV, user unit, no sudo)
+#   ricer sounds             full meme sound scheme (web samples -> wavs, login mix, logout sting)
 #   ricer grub [mood|restore]  GRUB menu art (sudo, backup kept)
 #   ricer splash [mood|restore] Plymouth boot splash (sudo + initramfs rebuild)
 #     Firmware limits: power-on Apple logo + chime are Apple firmware (pre-Linux,
@@ -563,8 +564,69 @@ splash_arch() { # splash_arch <mood> — mkinitcpio path (Asahi Alarm / Arch)
   echo "splash: furarcher Plymouth active next reboot (mkinitcpio rebuilt). Restore: ricer splash restore"
 }
 
-cmd_status() {
-  echo "DE: ${XDG_CURRENT_DESKTOP:-unknown} | session: ${XDG_SESSION_TYPE:-unknown}"
+sound_url() { # sound_url <name> -> mp3 url (FUR_SOUNDS_MIRROR overrides base for tests)
+  case "$1" in
+    boykisser-meow) echo "https://sounds.myinstantplay.com/boykisser-meow.mp3" ;;
+    *) echo "${FUR_SOUNDS_MIRROR:-https://www.myinstants.com/media/sounds}/$1.mp3" ;;
+  esac
+}
+
+do_sounds() {
+  # Full meme sound scheme (personal-use samples, downloaded on-target only):
+  #   boot/login  = boykisser meow + yippee-autism mix
+  #   logout      = bye-bye mewing (hyprland exec-shutdown, best-effort)
+  #   app open    = dexter meme (fur-sounds daemon watches Hyprland windows)
+  #   success     = verity edit (run: fur-win)
+  command -v curl >/dev/null 2>&1 || { echo "need curl"; return 1; }
+  command -v ffmpeg >/dev/null 2>&1 || { echo "need ffmpeg (Fedora: ffmpeg-free / Arch: ffmpeg)"; return 1; }
+  SND="$HOME/.local/share/sounds"
+  run "mkdir -p \"$SND\""
+  ok=0
+  for pair in "boykisser-meow boykisser-meow" "yippeee-autism yippee-autism" "bye-bye-mewing bye-mewing" "dexter-meme dexter" "verity-edit verity"; do
+    set -- $pair; src="$1"; out="furarcher-$2.wav"
+    echo "fetching $src ..."
+    if run "curl -fsSL --max-time 60 -A \"furarcher-asahi/ricer\" -o \"$SND/.$out.mp3\" \"$(sound_url "$src")\""; then
+      if run "ffmpeg -y -v error -i \"$SND/.$out.mp3\" -ar 44100 -ac 1 -sample_fmt s16 -filter:a \"loudnorm=I=-16:TP=-1.5:LRA=7\" \"$SND/$out\""; then
+        ok=$((ok + 1))
+      else echo "convert failed: $src"; fi
+      run "rm -f \"$SND/.$out.mp3\""
+    else echo "download failed: $src"; fi
+  done
+  [ "$ok" = "5" ] || { echo "sound scheme incomplete ($ok/5) - check network and retry"; return 1; }
+  echo "mixing login sting (meow + yippee)..."
+  run "ffmpeg -y -v error -i \"$SND/furarcher-boykisser-meow.wav\" -i \"$SND/furarcher-yippee-autism.wav\" -filter_complex \"[0:a][1:a]concat=n=2:v=0:a=1\" \"$SND/furarcher-chime-login.wav\"" || return 1
+  player="/usr/bin/pw-play"
+  command -v pw-play >/dev/null 2>&1 && player="$(command -v pw-play)"
+  command -v pw-play >/dev/null 2>&1 || { command -v paplay >/dev/null 2>&1 && player="$(command -v paplay)"; }
+  run "mkdir -p \"$HOME/.config/systemd/user\""
+  run "cat > \"$HOME/.config/systemd/user/furarcher-chime.service\" <<EOF
+[Unit]
+Description=Furarcher login chime (boykisser meow + yippee)
+After=pipewire.service pipewire-pulse.service
+[Service]
+Type=oneshot
+ExecStart=$player $SND/furarcher-chime-login.wav
+[Install]
+WantedBy=graphical-session.target
+EOF"
+  run "systemctl --user daemon-reload || true"
+  run "systemctl --user enable furarcher-chime.service || true"
+  run "mkdir -p \"$HYDIR\""
+  if ! grep -q "exec-shutdown" "$HYDIR/hyprland.conf" 2>/dev/null; then
+    run "echo 'exec-shutdown = $player $SND/furarcher-bye-mewing.wav || true' >> \"$HYDIR/hyprland.conf\""
+  fi
+  FURBIN="$(command -v fur-sounds 2>/dev/null || echo "$ROOT/bin/fur-sounds")"
+  if ! grep -q "fur-sounds" "$HYDIR/hyprland.conf" 2>/dev/null; then
+    run "echo 'exec-once = $FURBIN &' >> \"$HYDIR/hyprland.conf\""
+  fi
+  if [ "$DRY" != "true" ] && [ -f "$SND/furarcher-chime-login.wav" ]; then
+    echo "preview (best-effort):"
+    $player "$SND/furarcher-chime-login.wav" 2>/dev/null || true
+  fi
+  echo "sounds: boot meow + login yippee + logout bye + app dexter + win verity ^_^"
+}
+
+cmd_status() {  echo "DE: ${XDG_CURRENT_DESKTOP:-unknown} | session: ${XDG_SESSION_TYPE:-unknown}"
   echo "mood: boykisser + gay boys + furries + femboys (SFW dark)"
   echo "theme: $(cat "$RCACHE/theme" 2>/dev/null || echo '(none yet — try: ricer theme boykisser)')"
   echo "gnome bg: $(gsettings get org.gnome.desktop.background picture-uri 2>/dev/null || echo '(no gsettings)')"
@@ -846,6 +908,7 @@ case "${1:-status}" in
   mactheme) do_mactheme ;;
   gpu) do_gpu ;;
   chime) shift; a="${1:-}"; case "$a" in --*) a="";; esac; do_chime "${a:-boykisser}" ;;
+  sounds) do_sounds ;;
   grub) shift; a="${1:-}"; case "$a" in --*) a="";; esac; do_grub "${a:-boykisser}" ;;
   splash) shift; a="${1:-}"; case "$a" in --*) a="";; esac; do_splash "${a:-boykisser}" ;;
   find) shift; [ $# -ge 1 ] || { echo 'usage: ricer find <query> [count] [--source=all|wallhaven|nekos|waifu|safebooru|openverse]'; exit 1; }; cmd_find "$@" ;;
@@ -854,5 +917,5 @@ case "${1:-status}" in
   fetch-pack) shift; [ $# -ge 1 ] || { echo 'usage: ricer fetch-pack <boykisser|mlm|furry|femboy|gaylove|midnight|bear|achillean> [n]'; exit 1; }; cmd_fetchpack "$@" ;;
   auto) shift; a="${1:-}"; case "$a" in --*) a="";; esac; cmd_auto "${a:-boykisser}" ;;
   status) cmd_status ;;
-  *) echo "usage: ricer {apply [IMAGE] [theme]|wallpaper|theme|themes|mood|love|wallpapers|darkmode|dock|macbinds|mactheme|gpu|chime|grub|splash|find|get|preview|fetch-pack|auto|status} [--dry-run]"; exit 1 ;;
+  *) echo "usage: ricer {apply [IMAGE] [theme]|wallpaper|theme|themes|mood|love|wallpapers|darkmode|dock|macbinds|mactheme|gpu|chime|grub|splash|find|get|preview|fetch-pack|auto|sounds|status} [--dry-run]"; exit 1 ;;
 esac

@@ -1,0 +1,87 @@
+#!/usr/bin/env python3
+"""fur-sounds - Hyprland app-open sound daemon (boykisser sound scheme).
+Listens on the Hyprland event socket (socket2) for openwindow events and plays
+the dexter meme when a terminal or file manager opens. Stdlib only.
+Usage: fur-sounds [--once]   (--once: parse one argv line, for tests)
+Env: FUR_DEXTER_WAV (default ~/.local/share/sounds/furarcher-dexter.wav),
+     FUR_DEBOUNCE_SEC (default 1.5)
+"""
+import os
+import socket
+import subprocess
+import sys
+import time
+
+WATCH = {"kitty", "foot", "org.kde.dolphin", "org.gnome.nautilus",
+         "thunar", "helium", "firefox"}
+DEXTER = os.environ.get(
+    "FUR_DEXTER_WAV",
+    os.path.expanduser("~/.local/share/sounds/furarcher-dexter.wav"))
+DEBOUNCE = float(os.environ.get("FUR_DEBOUNCE_SEC", "1.5"))
+last_play = 0.0
+
+
+def should_play(line):
+    """openwindow>>address,workspace,class,title -> True for watched classes."""
+    if not line.startswith("openwindow>>"):
+        return False
+    parts = line[len("openwindow>>"):].split(",", 3)
+    if len(parts) < 3:
+        return False
+    return parts[2].strip() in WATCH
+
+
+def play():
+    global last_play
+    now = time.monotonic()
+    if now - last_play < DEBOUNCE:
+        return False
+    last_play = now
+    if not os.path.isfile(DEXTER):
+        return False
+    for player in (["pw-play"], ["paplay"], ["afplay"]):
+        try:
+            subprocess.run(player + [DEXTER], timeout=10,
+                           stdout=subprocess.DEVNULL,
+                           stderr=subprocess.DEVNULL)
+            return True
+        except Exception:
+            continue
+    return False
+
+
+def sock_path():
+    run = os.environ.get("XDG_RUNTIME_DIR", f"/run/user/{os.getuid()}")
+    sig = os.environ.get("HYPRLAND_INSTANCE_SIGNATURE", "")
+    if not sig:
+        try:
+            sig = sorted(os.listdir(os.path.join(run, "hypr")))[-1]
+        except Exception:
+            return None
+    return os.path.join(run, "hypr", sig, ".socket2.sock")
+
+
+def main():
+    if len(sys.argv) > 1 and sys.argv[1] == "--once":
+        print("play" if should_play(sys.argv[2] if len(sys.argv) > 2 else "") else "skip")
+        return 0
+    path = sock_path()
+    if not path:
+        print("fur-sounds: no Hyprland socket found", file=sys.stderr)
+        return 1
+    s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+    s.connect(path)
+    buf = ""
+    while True:
+        data = s.recv(4096).decode("utf-8", "ignore")
+        if not data:
+            return 1
+        buf += data
+        while "\n" in buf:
+            line, buf = buf.split("\n", 1)
+            if should_play(line.strip()):
+                play()
+
+
+if __name__ == "__main__":
+    sys.exit(main())

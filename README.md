@@ -101,7 +101,6 @@ Installs Hyprland + waybar/wofi/kitty/mate-polkit from **official Fedora repos**
 ```
 
 ## Boot: chime + GRUB art + Plymouth splash
-
 Firmware honesty first: the power-on **Apple logo** and **Mac chime** play from
 Apple firmware before Linux loads — no Linux tool can change them (muting the
 Mac chime needs macOS NVRAM). Everything *after* firmware is themeable:
@@ -121,6 +120,24 @@ compatible with Fedora's stock spinner theme, with boykisser-dark colors and a
 pink progress bar. PNG rendering prefers `rsvg-convert`/`inkscape`/`convert`
 and falls back to a stdlib gradient (`sudo dnf install -y librsvg2-tools` for
 full art).
+
+## Meme sound scheme (needs ffmpeg, personal-use samples)
+
+One command downloads, normalizes and wires five sounds (meme mp3s are fetched
+on-target only, never shipped in the repo):
+
+```bash
+./bin/ricer sounds
+```
+
+| moment | sound | how |
+|---|---|---|
+| boot → login | boykisser meow + yippee-autism mix | login unit (true pre-login audio is impossible on Linux — this fires the instant the desktop lands) |
+| logout/shutdown | bye-bye mewing | Hyprland `exec-shutdown`, best-effort |
+| opening terminal, files, browser | dexter meme | `fur-sounds` daemon watches Hyprland windows |
+| did something hard, got it right | verity edit | run `fur-win` yourself and take the win ^_^ |
+
+No ffmpeg or no network: `ricer chime` (stdlib synth) still works fully offline.
 
 ## Web fetch (SFW only, 5 providers + full-auto)
 

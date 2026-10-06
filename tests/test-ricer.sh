@@ -243,6 +243,27 @@ grep -q "mkinitcpio -P" "$TESTHOME/calls.log" && pass "splash arch rebuild" || f
 grep -q "install_mpvpaper_arch" furarcher.sh && pass "arch aur fallback" || fail "arch aur fallback"
 grep -q "pacman -S --needed" furarcher.sh && pass "arch packages" || fail "arch packages"
 
+# --- meme sound scheme (stubbed curl/ffmpeg, isolated HOME) ---
+printf '#!/bin/bash\nout=""; while [ $# -gt 0 ]; do case "$1" in -o) out="$2"; shift 2;; *) shift;; esac; done; printf "fake-mp3-bytes" > "$out"\n' > "$STUBBIN/curl"
+printf '#!/bin/bash\nfor a in "$@"; do case "$a" in *.wav) touch "$a";; esac; done\n' > "$STUBBIN/ffmpeg"
+chmod +x "$STUBBIN/curl" "$STUBBIN/ffmpeg"
+"$R" sounds >/dev/null 2>&1 && pass "sounds install" || fail "sounds install"
+for w in boykisser-meow yippee-autism bye-mewing dexter verity chime-login; do
+  [ -f "$TESTHOME/.local/share/sounds/furarcher-$w.wav" ] && pass "wav $w" || fail "wav $w"
+done
+grep -q "furarcher-chime-login.wav" "$TESTHOME/.config/systemd/user/furarcher-chime.service" && pass "login mix wired" || fail "login mix wired"
+grep -q "exec-shutdown.*bye-mewing" "$TESTHOME/.config/hypr/hyprland.conf" && pass "logout sting" || fail "logout sting"
+grep -q "fur-sounds" "$TESTHOME/.config/hypr/hyprland.conf" && pass "daemon autostart" || fail "daemon autostart"
+rm -rf "$TESTHOME/.local"
+"$R" sounds --dry-run >/dev/null 2>&1
+[ ! -d "$TESTHOME/.local" ] && pass "sounds dry-run clean" || fail "sounds dry-run clean"
+./bin/fur-sounds --once "openwindow>>abc,1,kitty,term" | grep -q play && pass "daemon kitty" || fail "daemon kitty"
+./bin/fur-sounds --once "openwindow>>abc,1,firefox,web" | grep -q play && pass "daemon firefox" || fail "daemon firefox"
+./bin/fur-sounds --once "garbage" | grep -q skip && pass "daemon garbage" || fail "daemon garbage"
+HOME="$TESTHOME" ./bin/fur-win 2>&1 | grep -q "ricer sounds" && pass "win missing hint" || fail "win missing hint"
+mkdir -p "$TESTHOME/.local/share/sounds" && touch "$TESTHOME/.local/share/sounds/furarcher-verity.wav"
+PATH="$STUBBIN" HOME="$TESTHOME" ./bin/fur-win 2>&1 | grep -qi "no audio player" && pass "win no player" || fail "win no player"
+
 rm -rf "$TESTHOME"
 if [ "$FAIL" -eq 0 ]; then echo "ALL RICER CHECKS PASSED"; else echo "SOME RICER CHECKS FAILED"; fi
 exit "$FAIL"

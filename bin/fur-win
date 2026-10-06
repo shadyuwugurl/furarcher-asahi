@@ -1,0 +1,8 @@
+#!/bin/bash
+# fur-win - play the success sting (you did something hard and got it right ^_^)
+WAV="$HOME/.local/share/sounds/furarcher-verity.wav"
+[ -f "$WAV" ] || { echo "no success sting yet - run: ricer sounds"; exit 1; }
+if command -v pw-play >/dev/null 2>&1; then pw-play "$WAV"
+elif command -v paplay >/dev/null 2>&1; then paplay "$WAV"
+elif command -v afplay >/dev/null 2>&1; then afplay "$WAV"
+else echo "no audio player found"; exit 1; fi
