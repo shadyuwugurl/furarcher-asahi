@@ -147,6 +147,16 @@ echo "fake" > "$PLYMOUTH_THEMES_DIR/spinner/watermark.png"
 
 python3 sounds/make-chime.py boykisser "$TESTHOME/c1.wav" && pass "chime synth" || fail "chime synth"
 python3 -c "import wave; w=wave.open('$TESTHOME/c1.wav'); assert w.getframerate()==44100 and w.getnframes()>0" && pass "chime wav valid" || fail "chime wav valid"
+python3 - "$TESTHOME/c1.wav" <<'PYEOF' && pass "chime has kiss" || fail "chime has kiss"
+import struct, sys, wave
+w = wave.open(sys.argv[1]); n = w.getnframes(); rate = w.getframerate()
+x = [v / 32768 for v in struct.unpack(f'<{n}h', w.readframes(n))]
+def zcr(a):
+    return sum(1 for i in range(1, len(a)) if (a[i] >= 0) != (a[i-1] >= 0)) / len(a)
+smack = x[int(0.02*rate):int(0.12*rate)]
+motif = x[int(0.60*rate):int(0.90*rate)]
+assert 0.15 < zcr(smack) < 0.60 and zcr(motif) < 0.10 and max(abs(v) for v in x) <= 1.0
+PYEOF
 python3 sounds/make-chime.py bogus "$TESTHOME/c2.wav" >/dev/null 2>&1 && fail "bad chime mood rejected" || pass "bad chime mood rejected"
 "$R" chime bogus >/dev/null 2>&1 && fail "bad chime rejected" || pass "bad chime rejected"
 "$R" chime boykisser >/dev/null && pass "chime install" || fail "chime install"
