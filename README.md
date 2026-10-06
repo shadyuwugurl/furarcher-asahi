@@ -49,6 +49,23 @@ tap-to-click + natural scroll, screenshot prefs, login chime (afplay
 LaunchAgent), kitty theme. Firmware limits: the boot Apple logo and the
 built-in startup chime cannot be replaced (script offers sudo-nvram mute only).
 
+## Dotfiles layout (omarchy-style)
+
+Payload doubles as dotfiles — no build step, `ricer`/`furarcher` apply them:
+
+```text
+bin/            furarcher, ricer, furfetch, furassistant, macrice, make-themes (stay on PATH via brew)
+config/         user configs: hypr/ (hyprland, waybar top+dock, wofi), kitty, mako
+themes/<mood>/  static packs: wallpaper.svg link + kitty-theme.conf + hypr-colors.conf
+                (run bin/make-themes to rebuild; ricer stays source of truth)
+wallpapers/     source SVG art (bundled, SFW)
+sounds/         chime synthesizers (stdlib python, no assets)
+plymouth/       furarcher Plymouth theme + svg-to-png fallback
+macos/          macrice.sh for the macOS side of the dual-boot
+furassistant/   local Hermes AI (Ollama)
+install.sh      fresh-machine front door (sudo keepalive, delegates to furarcher.sh)
+```
+
 ## Hyprland (“hyperland”) — dark + dock + macbinds
 
 Run `./furarcher.sh` and pick `2`, or `./furarcher.sh --hyprland`.

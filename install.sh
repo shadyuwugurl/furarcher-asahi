@@ -16,14 +16,19 @@ for a in "$@"; do case "$a" in -h|--help)
   exit 0 ;;
 esac; done
 
-if ! sudo -v; then
+NEED_SUDO="true"
+for a in "$@"; do case "$a" in --dry-run) NEED_SUDO="false" ;; esac; done
+
+if [ "$NEED_SUDO" = "true" ] && ! sudo -v; then
   echo "sudo needed for system packages. Aborting."
   exit 1
 fi
 keep_sudo_alive() { while true; do sudo -v; sleep 50; done; }
-keep_sudo_alive &
-SUDO_PID=$!
-trap 'kill $SUDO_PID 2>/dev/null; sudo -k' EXIT INT TERM
+if [ "$NEED_SUDO" = "true" ]; then
+  keep_sudo_alive &
+  SUDO_PID=$!
+  trap 'kill $SUDO_PID 2>/dev/null; sudo -k' EXIT INT TERM
+fi
 
 echo "Furarcher Asahi installer ^_^  (payload: $(pwd))"
 echo "Layout: bin/ tools | config/ dotfiles | themes/ packs | furassistant/ AI"

@@ -290,6 +290,18 @@ do_mactheme() {
     if [ -f "$HYDIR/hyprland.conf" ] && grep -q "env = GTK_THEME,adw-gtk3-dark" "$HYDIR/hyprland.conf" 2>/dev/null; then
       run "sed -i 's|env = GTK_THEME,adw-gtk3-dark|env = GTK_THEME,WhiteSur-Dark|' \"$HYDIR/hyprland.conf\""
     fi
+    # matching mac cursors (pure assets, aarch64-safe, best-effort)
+    if [ ! -d /tmp/WhiteSur-cursors ]; then
+      run "git clone --depth 1 https://github.com/vinceliuice/WhiteSur-cursors.git /tmp/WhiteSur-cursors || true"
+    fi
+    if [ -d /tmp/WhiteSur-cursors ]; then
+      run "mkdir -p \"$HOME/.icons\""
+      run "bash /tmp/WhiteSur-cursors/install.sh -d \"$HOME/.icons\" || true"
+    fi
+    if [ -d "$HOME/.icons/WhiteSur-cursors" ] && command -v gsettings >/dev/null 2>&1; then
+      run "gsettings set org.gnome.desktop.interface cursor-theme 'WhiteSur-cursors' || true"
+      run "gsettings set org.gnome.desktop.interface cursor-size 24 || true"
+    fi
     echo "mactheme: WhiteSur-Dark active (log out/in for full effect)."
   else
     echo "WhiteSur-Dark dir missing after install - open /tmp/WhiteSur-gtk-theme to inspect."
