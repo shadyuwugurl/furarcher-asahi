@@ -113,8 +113,10 @@ do_wallpaper() { # do_wallpaper <img>
   img="$1"
   [ -f "$img" ] || { echo "no such image: $img"; return 1; }
   run "mkdir -p \"$BGDIR\""
-  run "cp -f \"$img\" \"$BGDIR/\""
   base=$(basename "$img")
+  if [ "$img" != "$BGDIR/$base" ]; then
+    run "cp -f \"$img\" \"$BGDIR/\""
+  fi
   if command -v gsettings >/dev/null 2>&1; then
     run "gsettings set org.gnome.desktop.background picture-uri \"file://$BGDIR/$base\""
     run "gsettings set org.gnome.desktop.background picture-uri-dark \"file://$BGDIR/$base\""
@@ -145,7 +147,7 @@ wallpaper = {
 splash = false
 ipc = on
 EOF"
-      run "hyprctl hyprpaper reload \"eDP-1,$hp\" 2>/dev/null || hyprctl hyprpaper reload \",$hp\" 2>/dev/null || true"
+      run "hyprctl hyprpaper wallpaper \"eDP-1,$hp\" 2>/dev/null || hyprctl hyprpaper wallpaper \",$hp\" 2>/dev/null || true"
     fi
   else
     echo "(no swww/hyprpaper - Hyprland wallpaper only on next ricer with a backend)"
