@@ -62,6 +62,10 @@ Installs Hyprland + waybar/wofi/kitty/mate-polkit from **official Fedora repos**
   Cmd+Shift+3/4/5 screenshots, Ctrl+Cmd+Q lock, Mission Control spaces 1-5,
   natural scroll + tap-to-click; kitty gets Cmd+C/V/T/W/N, tabs 1-9, font keys;
   GNOME gets Cmd+Q close, Cmd+Tab apps, Ctrl+Space input switch, Cmd+Shift+3/4 shots
+* wallpaper backend: `hyprpaper` with auto-rewritten `hyprpaper.conf`
+  (SVG auto-rendered to PNG) + live `hyprctl` reload when in session
+* F44 note: the Hyprland compositor left Fedora official repos — the installer
+  falls back to the `hermitfeather/hyprland-dev` COPR (verified aarch64)
 * macOS look (`ricer mactheme`, needs network): WhiteSur-Dark GTK = real
   traffic-light buttons (red/yellow/green, left side) in every GTK app on both
   GNOME and Hyprland. Limit: Hyprland draws no titlebars of its own, so there

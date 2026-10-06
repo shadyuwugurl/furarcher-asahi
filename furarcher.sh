@@ -160,10 +160,18 @@ install_hyprland_asahi_experimental() {
   echo "Hyprland = you typed 'hyperland' - this is it (Wayland tiling compositor)."
   echo "M1 Air 2560x1664, dark mode only, macOS keybinds (SUPER=Cmd), top bar + bottom dock."
   echo "Status on Asahi Apple GPU: works for many but glitchy vs GNOME. GNOME stays installed as fallback."
-  echo "This installs Hyprland from official Fedora repos (0.44+ on F41, verified aarch64)"
-  echo " + waybar/wofi/kitty, copies hypr/hyprland.conf + waybar top/dock + wofi dark."
   if ! ask "Continue with Hyprland install"; then return 0; fi
-  run "sudo dnf install -y hyprland waybar wofi kitty foot mate-polkit pipewire wireplumber grim slurp wl-clipboard mesa-dri-drivers mesa-vulkan-drivers || echo 'some hypr pkgs missing (ok, partial install)'"
+  # Hyprland compositor left Fedora official repos on F44+; COPR fallback.
+  if ! command -v hyprland >/dev/null 2>&1; then
+    run "sudo dnf install -y hyprland || true"
+  fi
+  if ! command -v hyprland >/dev/null 2>&1; then
+    echo "hyprland not in official repos - trying hermitfeather/hyprland-dev COPR (aarch64)..."
+    run "sudo dnf install -y dnf-plugins-core"
+    run "sudo dnf copr enable -y hermitfeather/hyprland-dev"
+    run "sudo dnf install -y hyprland hyprpaper"
+  fi
+  run "sudo dnf install -y waybar wofi kitty foot mate-polkit pipewire wireplumber grim slurp wl-clipboard cliphist mesa-dri-drivers mesa-vulkan-drivers glx-utils vulkan-tools librsvg2-tools || echo 'some hypr pkgs missing (ok, partial install)'"
   run "mkdir -p $HOME/.config/hypr $HOME/.config/waybar $HOME/.config/wofi"
   run "cp -f \"$SCRIPT_DIR/hypr/hyprland.conf\" $HOME/.config/hypr/hyprland.conf"
   run "cp -f \"$SCRIPT_DIR/hypr/waybar-config.jsonc\" $HOME/.config/waybar/furarcher-top.jsonc"

@@ -125,9 +125,30 @@ do_wallpaper() { # do_wallpaper <img>
   if command -v swww >/dev/null 2>&1; then
     run "swww img \"$BGDIR/$base\" || true"
   elif command -v hyprpaper >/dev/null 2>&1; then
-    run "hyprpaper preload \"$BGDIR/$base\" && hyprpaper wallpaper \",$BGDIR/$base\" || true"
+    # hyprpaper (0.7+ config style): rewrite hyprpaper.conf, live-reload if in session
+    hp=""
+    case "$img" in
+      *.svg) hp="$BGDIR/.hyprpaper.png"; to_png "$img" 1920 "$hp" || hp="" ;;
+      *.png|*.jpg|*.jpeg) hp="$BGDIR/$base" ;;
+    esac
+    if [ -n "$hp" ] && { [ -f "$hp" ] || [ "$DRY" = "true" ]; }; then
+      run "mkdir -p \"$HYDIR\""
+      run "cat > \"$HYDIR/hyprpaper.conf\" <<EOF
+preload = $hp
+wallpaper = {
+    monitor = eDP-1
+    path = $hp
+}
+wallpaper = {
+    path = $hp
+}
+splash = false
+ipc = on
+EOF"
+      run "hyprctl hyprpaper reload \"eDP-1,$hp\" 2>/dev/null || hyprctl hyprpaper reload \",$hp\" 2>/dev/null || true"
+    fi
   else
-    echo "(no swww/hyprpaper - Hyprland wallpaper via hyprland.conf)"
+    echo "(no swww/hyprpaper - Hyprland wallpaper only on next ricer with a backend)"
   fi
   echo "wallpaper: $base"
 }
