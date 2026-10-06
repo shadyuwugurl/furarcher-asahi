@@ -171,7 +171,7 @@ install_hyprland_asahi_experimental() {
     run "sudo dnf copr enable -y hermitfeather/hyprland-dev"
     run "sudo dnf install -y hyprland hyprpaper"
   fi
-  run "sudo dnf install -y waybar wofi kitty foot mate-polkit pipewire wireplumber grim slurp wl-clipboard cliphist mesa-dri-drivers mesa-vulkan-drivers glx-utils vulkan-tools librsvg2-tools || echo 'some hypr pkgs missing (ok, partial install)'"
+  run "sudo dnf install -y waybar wofi kitty foot mate-polkit pipewire wireplumber grim slurp wl-clipboard cliphist mpvpaper playerctl brightnessctl mesa-dri-drivers mesa-vulkan-drivers glx-utils vulkan-tools librsvg2-tools || echo 'some hypr pkgs missing (ok, partial install)'"
   run "mkdir -p $HOME/.config/hypr $HOME/.config/waybar $HOME/.config/wofi"
   run "cp -f \"$SCRIPT_DIR/hypr/hyprland.conf\" $HOME/.config/hypr/hyprland.conf"
   run "cp -f \"$SCRIPT_DIR/hypr/waybar-config.jsonc\" $HOME/.config/waybar/furarcher-top.jsonc"

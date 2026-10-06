@@ -119,6 +119,25 @@ do_wallpaper() { # do_wallpaper <img>
   if [ "$img" != "$BGDIR/$base" ]; then
     run "cp -f \"$img\" \"$BGDIR/\""
   fi
+  case "$base" in *.gif|*.GIF)
+    # animated wallpaper via mpvpaper (hyprpaper is static-only)
+    if command -v mpvpaper >/dev/null 2>&1; then
+      run "pkill -x hyprpaper 2>/dev/null || true"
+      run "nohup mpvpaper -o \"loop-file=inf no-audio panscan=1.0\" eDP-1 \"$BGDIR/$base\" >/dev/null 2>&1 &"
+      if [ -f "$HYDIR/hyprland.conf" ]; then
+        run "sed -i 's|^exec-once = hyprpaper|#exec-once = hyprpaper|' \"$HYDIR/hyprland.conf\""
+        if grep -q "exec-once = mpvpaper" "$HYDIR/hyprland.conf" 2>/dev/null; then
+          run "sed -i 's|^.*exec-once = mpvpaper.*|exec-once = mpvpaper -o \"loop-file=inf no-audio panscan=1.0\" eDP-1 $BGDIR/$base \\&|' \"$HYDIR/hyprland.conf\""
+        else
+          run "echo 'exec-once = mpvpaper -o \"loop-file=inf no-audio panscan=1.0\" eDP-1 $BGDIR/$base &' >> \"$HYDIR/hyprland.conf\""
+        fi
+      fi
+      echo "wallpaper: $base (animated via mpvpaper)"
+      return 0
+    else
+      echo "(mpvpaper missing - sudo dnf install -y mpvpaper for animated GIFs)"
+    fi ;;
+  esac
   case "$base" in *.png|*.jpg|*.jpeg) fit_wallpaper "$BGDIR/$base" ;; esac
   if command -v gsettings >/dev/null 2>&1; then
     run "gsettings set org.gnome.desktop.background picture-uri \"file://$BGDIR/$base\""
@@ -130,6 +149,12 @@ do_wallpaper() { # do_wallpaper <img>
   if command -v swww >/dev/null 2>&1; then
     run "swww img \"$BGDIR/$base\" || true"
   elif command -v hyprpaper >/dev/null 2>&1; then
+    # back to static: re-enable hyprpaper autostart, drop any mpvpaper line
+    if [ -f "$HYDIR/hyprland.conf" ]; then
+      run "sed -i 's|^#exec-once = hyprpaper|exec-once = hyprpaper|' \"$HYDIR/hyprland.conf\""
+      run "sed -i '/mpvpaper -o/d' \"$HYDIR/hyprland.conf\""
+    fi
+    run "pkill -x mpvpaper 2>/dev/null || true"
     # hyprpaper (0.7+ config style): rewrite hyprpaper.conf, live-reload if in session
     hp=""
     case "$img" in
@@ -437,6 +462,7 @@ do_grub() { # grub [mood|restore] — GRUB menu background (sudo, backup kept)
   run "mkdir -p \"$RCACHE\" && sudo cat /etc/default/grub > \"$RCACHE/grub.bak\""
   run "sudo sed -i '/^GRUB_BACKGROUND=/d' /etc/default/grub"
   run "sudo sh -c 'echo GRUB_BACKGROUND=/boot/grub2/furarcher-bg.png >> /etc/default/grub'"
+  run "sudo sh -c 'sed -i \"/^GRUB_DISTRIBUTOR=/d\" /etc/default/grub && echo GRUB_DISTRIBUTOR=\"Boykisser OS\" >> /etc/default/grub'"
   run "sudo cp -f \"$png\" /boot/grub2/furarcher-bg.png" || return 1
   run "sudo grub2-mkconfig -o /boot/grub2/grub.cfg" || return 1
   echo "grub: boykisser menu art active next reboot. Restore: ricer grub restore"

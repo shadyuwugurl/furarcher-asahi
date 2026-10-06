@@ -7,3 +7,4 @@ window#waybar { background: rgba(18, 10, 22, 0.92); color: #f5d5ec; border-botto
 #clock { color: #ff9ecf; font-weight: bold; }
 #cpu, #memory, #battery, #network, #pulseaudio, #tray { color: #e2d5ff; padding: 0 8px; }
 #battery.warning { color: #f5a9b8; }
+#custom-os { color: #ff9ecf; font-weight: bold; padding: 0 8px; }
