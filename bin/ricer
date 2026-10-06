@@ -512,9 +512,8 @@ cmd_find() { # find <query> [count] [--source=all|wallhaven|nekos|waifu|safeboor
   # safebooru tags: SFW-only board, danbooru-style API. Mood-mapped, romantic/wholesome tags only.
   sb_tags=$(python3 -c "import urllib.parse,sys; print(urllib.parse.quote(sys.argv[1]))" "$q")
   case "$q" in
-    boykisser|Boykisser) sb_tags="cat_ears+kiss" ;;
+    boykisser|Boykisser|gaylove) sb_tags="boykisser" ;;
     mlm|achillean|boyfriend) sb_tags="2boys+holding_hands" ;;
-    gaylove) sb_tags="2boys+kiss" ;;
     furry|paw|fox|wolf) sb_tags="furry" ;;
     femboy|Femboy) sb_tags="femboy" ;;
     bear) sb_tags="muscular" ;;

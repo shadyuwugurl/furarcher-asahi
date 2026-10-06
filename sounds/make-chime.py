@@ -63,26 +63,34 @@ def mwah(dur=0.20, f0=700.0, f1=340.0):
     return out
 
 
-def yip(base=700.0, dur=YIP_LEN):
-    """Happy puppy yip: fast rising chirp, harmonic bark buzz, AM wobble."""
+def yip(base=620.0, dur=0.13):
+    """Happy puppy yip: snappy rising chirp, formant bark body, no electric buzz.
+    Few fast-decaying harmonics, organic jitter (not AM tremolo), lowpassed."""
     n = int(dur * RATE)
     out = []
-    phases = [0.0] * 7
+    phases = [0.0] * 5
     for i in range(n):
         t = i / RATE
         frac = t / dur
-        f = base * (1.0 + 0.75 * frac) if frac < 0.55 else base * 1.41 - (base * 0.55) * (frac - 0.55)
+        # snap up 2.1x in first quarter, relax back down
+        glide = 1.0 + 1.1 * frac / 0.25 if frac < 0.25 else 2.1 - 1.05 * (frac - 0.25)
+        jit = 1.0 + 0.020 * math.sin(2 * math.pi * 31.0 * t) + 0.010 * math.sin(2 * math.pi * 47.0 * t + 1.0)
+        f = base * glide * jit
         s = 0.0
-        for k in range(1, 8):
+        for k in range(1, 6):
             phases[k - 1] += 2.0 * math.pi * k * f / RATE
-            s += math.sin(phases[k - 1]) / k
-        wobble = 1.0 + 0.25 * math.sin(2.0 * math.pi * 28.0 * t)
-        attack = min(1.0, t / 0.003)
-        env = attack * math.exp(-2.2 * t / dur)
-        breath = random.uniform(-1, 1) * 0.12 if t < 0.02 else 0.0
-        out.append((s * 0.5 * wobble + breath) * env)
+            amp = 1.0 / (k ** 1.7)
+            # vocal-tract formant bump around 1.0-1.5 kHz
+            formant = 1.0 + 1.4 * math.exp(-(((k * f - 1250.0) / 650.0) ** 2))
+            s += math.sin(phases[k - 1]) * amp * formant
+        attack = min(1.0, t / 0.002)
+        env = attack * math.exp(-2.6 * t / dur)
+        onset = random.uniform(-1, 1) * 0.35 if t < 0.008 else 0.0
+        out.append((s * 0.6 + onset) * env)
+    # take the harsh edge off
+    out = lowpass(out, 4200.0)
     peak = max(1e-6, max(abs(v) for v in out))
-    return [v / peak * 0.9 for v in out]
+    return [v / peak * 0.85 for v in out]
 
 
 def tone(freq, n):
