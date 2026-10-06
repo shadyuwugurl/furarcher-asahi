@@ -224,6 +224,25 @@ rm -f "$TESTHOME/.local/share/furarcher/grub-bg.png"
 "$R" grub boykisser --dry-run >/dev/null
 [ ! -f "$TESTHOME/.local/share/furarcher/grub-bg.png" ] && pass "grub dry-run clean" || fail "grub dry-run clean"
 
+# --- arch paths (hide fedora plymouth stub so the mkinitcpio branch is taken) ---
+mv "$STUBBIN/plymouth-set-default-theme" "$STUBBIN/_psdt-hidden"
+printf '#!/bin/bash\necho "mkinitcpio $*" >> "$TESTHOME/calls.log"\n' > "$STUBBIN/mkinitcpio"
+chmod +x "$STUBBIN/mkinitcpio"
+export MKINITCPIO_CONF="$TESTHOME/mkinitcpio.conf"
+echo "HOOKS=(base udev autodetect)" > "$MKINITCPIO_CONF"
+mkdir -p "$TESTHOME/pthemes/spinner" && echo fake > "$TESTHOME/pthemes/spinner/watermark.png"
+export PLYMOUTH_THEMES_DIR="$TESTHOME/pthemes"
+export GRUB_CFG="$TESTHOME/grub.cfg"
+echo "# grub" > "$GRUB_CFG"
+"$R" grub boykisser --dry-run 2>&1 | grep -q "$TESTHOME/grub.cfg" && pass "grub cfg override" || fail "grub cfg override"
+"$R" splash boykisser >/dev/null && pass "splash arch flow" || fail "splash arch flow"
+grep -q "mkinitcpio -P" "$TESTHOME/calls.log" && pass "splash arch rebuild" || fail "splash arch rebuild"
+[ -f "$TESTHOME/.local/share/furarcher/mkinitcpio.bak" ] && pass "splash arch backup" || fail "splash arch backup"
+"$R" splash restore >/dev/null && pass "splash arch restore" || fail "splash arch restore"
+"$R" status | grep -q "plymouth:" && pass "status plymouth" || fail "status plymouth"
+grep -q "install_mpvpaper_arch" furarcher.sh && pass "arch aur fallback" || fail "arch aur fallback"
+grep -q "pacman -S --needed" furarcher.sh && pass "arch packages" || fail "arch packages"
+
 rm -rf "$TESTHOME"
 if [ "$FAIL" -eq 0 ]; then echo "ALL RICER CHECKS PASSED"; else echo "SOME RICER CHECKS FAILED"; fi
 exit "$FAIL"

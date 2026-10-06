@@ -16,6 +16,9 @@ for a in "$@"; do case "$a" in -h|--help)
   exit 0 ;;
 esac; done
 
+DRY_RUN="false"
+for a in "$@"; do case "$a" in --dry-run) DRY_RUN="true" ;; esac; done
+
 NEED_SUDO="true"
 for a in "$@"; do case "$a" in --dry-run) NEED_SUDO="false" ;; esac; done
 
@@ -32,5 +35,12 @@ fi
 
 echo "Furarcher Asahi installer ^_^  (payload: $(pwd))"
 echo "Layout: bin/ tools | config/ dotfiles | themes/ packs | furassistant/ AI"
+BACKUP_DIR="$HOME/.local/share/furarcher"
+BACKUP_FILE="$BACKUP_DIR/config-backup-$(date +%Y%m%d-%H%M%S).tgz"
+mkdir -p "$BACKUP_DIR"
+if [ "$DRY_RUN" != "true" ] && [ -d "$HOME/.config/hypr" ]; then
+  tar -czf "$BACKUP_FILE" -C "$HOME" .config/hypr .config/waybar .config/kitty .config/wofi .config/mako 2>/dev/null || true
+  echo "existing configs backed up to $BACKUP_FILE (omarchy overlay safe)"
+fi
 chmod +x furarcher.sh bin/ricer bin/furfetch bin/make-themes
 ./furarcher.sh "$@"

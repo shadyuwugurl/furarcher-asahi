@@ -159,6 +159,23 @@ Reddit/Pinterest are out by design: both serve login walls to keyless curl
 * GPU: Asahi AGX via kernel + Mesa (`mesa-dri-drivers`, `mesa-vulkan-drivers`) — `ricer gpu` verifies.
   ANE has no Linux driver (Apple firmware, no upstream support) — AI runs on CPU, keep <=8B Q4 on the 8GB Air.
 
+## Asahi Alarm (Arch) support
+
+Same dotfiles, Arch packaging. `./install.sh` detects `pacman` vs `dnf` itself;
+`ricer` adapts GRUB (`/boot/grub/grub.cfg`), Plymouth (`mkinitcpio -P` hook)
+and package hints automatically. Verified package names against Arch repos
+(25/26 official; only `mpvpaper` is AUR with a `yay` → `makepkg` fallback).
+
+```bash
+./install.sh --hyprland   # Asahi Alarm: pacman stack, same rice
+```
+
+Omarchy-mac coexistence: the installer backs up existing
+`~/.config/{hypr,waybar,kitty,wofi,mako}` to
+`~/.local/share/furarcher/config-backup-*.tgz` before applying, so overlaying
+an omarchy install is safe and reversible. Not yet run on real Alarm hardware
+— container + unit verified only.
+
 ## FurAssistant — local Hermes AI (NyarchAssistant replacement)
 
 NyarchAssistant is a [Newelle](https://github.com/qwersyk/Newelle) fork whose

@@ -328,7 +328,11 @@ do_gpu() {
   if ls /dev/dri 2>/dev/null; then echo "DRI nodes: $(ls /dev/dri 2>/dev/null | tr '\n' ' ')"; else echo "DRI: /dev/dri missing"; fi
   echo ""
   echo "GPU: Asahi AGX via Mesa (open) — Hyprland/GNOME use it when kernel + mesa-asahi present."
-  echo "  Ensure on Asahi Fedora: sudo dnf install -y mesa-dri-drivers mesa-vulkan-drivers"
+  if command -v pacman >/dev/null 2>&1; then
+    echo "  Ensure on Asahi Alarm: sudo pacman -S --needed mesa vulkan-tools (asahi-alarm kernel)"
+  else
+    echo "  Ensure on Asahi Fedora: sudo dnf install -y mesa-dri-drivers mesa-vulkan-drivers"
+  fi
   echo "ANE (Apple Neural Engine): NO Linux driver exists (Apple firmware, no upstream support)."
   echo "  AI runs on CPU (+ GPU offload where Ollama/llama.cpp supports it on ARM)."
   echo "  On 8GB M1 Air keep models <=8B Q4 (e.g. hermes3:8b) to avoid OOM."
@@ -407,7 +411,11 @@ to_png() { # to_png <svg> <width> <out.png> — rsvg -> inkscape -> convert -> s
   fi
   if python3 "$ROOT/plymouth/svg-to-png.py" "$w" "$out" 2>/dev/null; then
     echo "note: no SVG converter found - stdlib gradient fallback (no art detail)."
-    echo "  for full art: sudo dnf install -y librsvg2-tools   (rsvg-convert)"
+    if command -v pacman >/dev/null 2>&1; then
+      echo "  for full art: sudo pacman -S --needed librsvg   (rsvg-convert)"
+    else
+      echo "  for full art: sudo dnf install -y librsvg2-tools   (rsvg-convert)"
+    fi
     return 0
   fi
   echo "PNG render failed (no converter and stdlib fallback failed)"; return 1
@@ -458,11 +466,20 @@ EOF"
   echo "chime: $m installed (plays at graphical login)"
 }
 
+grub_cfg() { # grub.cfg path, Fedora vs Arch (override GRUB_CFG for tests)
+  if [ -n "${GRUB_CFG:-}" ]; then echo "$GRUB_CFG"; return 0; fi
+  if [ -f /boot/grub2/grub.cfg ]; then echo "/boot/grub2/grub.cfg"
+  elif [ -f /boot/grub/grub.cfg ]; then echo "/boot/grub/grub.cfg"
+  else echo "/boot/grub2/grub.cfg"
+  fi
+}
+
 do_grub() { # grub [mood|restore] — GRUB menu background (sudo, backup kept)
+  GCFG="$(grub_cfg)"; GBG="$(dirname "$GCFG")/furarcher-bg.png"
   if [ "${1:-}" = "restore" ]; then
     [ -f "$RCACHE/grub.bak" ] || { echo "no GRUB backup (run 'ricer grub <mood>' first)"; return 1; }
     run "sudo cp -f \"$RCACHE/grub.bak\" /etc/default/grub" || return 1
-    run "sudo grub2-mkconfig -o /boot/grub2/grub.cfg" || return 1
+    run "sudo grub2-mkconfig -o \"$GCFG\"" || return 1
     echo "grub: restored stock background"
     return 0
   fi
@@ -470,31 +487,50 @@ do_grub() { # grub [mood|restore] — GRUB menu background (sudo, backup kept)
   case "$mood" in boykisser|mlm|furry|femboy|gaylove|midnight|bear|achillean) ;;
     *) echo "unknown mood: $mood" >&2; return 1 ;;
   esac
-  command -v grub2-mkconfig >/dev/null 2>&1 || { echo "need grub2 (Asahi Fedora has it; else sudo dnf install -y grub2-tools)"; return 1; }
+  command -v grub2-mkconfig >/dev/null 2>&1 || { echo "need grub2 (Fedora: grub2-tools / Arch: grub)"; return 1; }
   png="$RCACHE/grub-bg.png"
   to_png "$(mood_svg "$mood")" 1920 "$png" || return 1
   run "sudo cp -n /etc/default/grub /etc/default/grub.furarcher-bak"
   run "mkdir -p \"$RCACHE\" && sudo cat /etc/default/grub > \"$RCACHE/grub.bak\""
   run "sudo sed -i '/^GRUB_BACKGROUND=/d' /etc/default/grub"
-  run "sudo sh -c 'echo GRUB_BACKGROUND=/boot/grub2/furarcher-bg.png >> /etc/default/grub'"
+  run "sudo sh -c 'echo GRUB_BACKGROUND=$GBG >> /etc/default/grub'"
   run "sudo sh -c 'sed -i \"/^GRUB_DISTRIBUTOR=/d\" /etc/default/grub && echo GRUB_DISTRIBUTOR=\"Boykisser OS\" >> /etc/default/grub'"
-  run "sudo cp -f \"$png\" /boot/grub2/furarcher-bg.png" || return 1
-  run "sudo grub2-mkconfig -o /boot/grub2/grub.cfg" || return 1
+  run "sudo cp -f \"$png\" \"$GBG\"" || return 1
+  run "sudo grub2-mkconfig -o \"$GCFG\"" || return 1
   echo "grub: boykisser menu art active next reboot. Restore: ricer grub restore"
 }
 
 do_splash() { # splash [mood|restore] — Plymouth boot splash (sudo + initramfs rebuild)
   if [ "${1:-}" = "restore" ]; then
-    [ -f "$RCACHE/plymouth-backup" ] || { echo "no Plymouth backup (run 'ricer splash <mood>' first)"; return 1; }
-    run "sudo plymouth-set-default-theme -R \"$(cat "$RCACHE/plymouth-backup")\"" || return 1
-    echo "splash: restored to $(cat "$RCACHE/plymouth-backup")"
-    return 0
+    if [ -f "$RCACHE/plymouth-backup" ] && command -v plymouth-set-default-theme >/dev/null 2>&1; then
+      run "sudo plymouth-set-default-theme -R \"$(cat "$RCACHE/plymouth-backup")\"" || return 1
+      echo "splash: restored to $(cat "$RCACHE/plymouth-backup")"
+      return 0
+    fi
+    if [ -f "$RCACHE/mkinitcpio.bak" ]; then
+      MCONF="${MKINITCPIO_CONF:-/etc/mkinitcpio.conf}"
+      run "sudo cp -f \"$RCACHE/mkinitcpio.bak\" \"$MCONF\"" || return 1
+      run "sudo mkinitcpio -P" || return 1
+      echo "splash: mkinitcpio config restored + rebuilt"
+      return 0
+    fi
+    echo "no Plymouth backup (run 'ricer splash <mood>' first)"; return 1
   fi
   mood="${1:-boykisser}"
   case "$mood" in boykisser|mlm|furry|femboy|gaylove|midnight|bear|achillean) ;;
     *) echo "unknown mood: $mood" >&2; return 1 ;;
   esac
-  command -v plymouth-set-default-theme >/dev/null 2>&1 || { echo "need plymouth: sudo dnf install -y plymouth plymouth-theme-spinner"; return 1; }
+  if command -v plymouth-set-default-theme >/dev/null 2>&1; then
+    splash_fedora "$mood"
+  elif command -v mkinitcpio >/dev/null 2>&1; then
+    splash_arch "$mood"
+  else
+    echo "need plymouth (Fedora: plymouth-theme-spinner / Arch: plymouth)"; return 1
+  fi
+}
+
+splash_fedora() { # splash_fedora <mood> — dracut path
+  mood="$1"
   SDIR="${PLYMOUTH_THEMES_DIR:-/usr/share/plymouth/themes}"
   [ -d "$SDIR/spinner" ] || { echo "need stock spinner assets: sudo dnf install -y plymouth-theme-spinner"; return 1; }
   png="$RCACHE/splash-watermark.png"
@@ -506,6 +542,25 @@ do_splash() { # splash [mood|restore] — Plymouth boot splash (sudo + initramfs
   run "plymouth-set-default-theme > \"$RCACHE/plymouth-backup\""
   run "sudo plymouth-set-default-theme -R furarcher" || return 1
   echo "splash: furarcher Plymouth active next reboot (initramfs rebuilt). Restore: ricer splash restore"
+}
+
+splash_arch() { # splash_arch <mood> — mkinitcpio path (Asahi Alarm / Arch)
+  mood="$1"
+  SDIR="${PLYMOUTH_THEMES_DIR:-/usr/share/plymouth/themes}"
+  [ -d "$SDIR/spinner" ] || { echo "need plymouth theme assets: sudo pacman -S --needed plymouth"; return 1; }
+  MCONF="${MKINITCPIO_CONF:-/etc/mkinitcpio.conf}"
+  [ -f "$MCONF" ] || { echo "no $MCONF (not an mkinitcpio system?)"; return 1; }
+  png="$RCACHE/splash-watermark.png"
+  to_png "$(mood_svg "$mood")" 480 "$png" || return 1
+  run "sudo mkdir -p /usr/share/plymouth/themes/furarcher"
+  run "sudo cp -f \"$SDIR/spinner/\"*.png /usr/share/plymouth/themes/furarcher/"
+  run "sudo cp -f \"$ROOT/plymouth/furarcher.plymouth\" /usr/share/plymouth/themes/furarcher/"
+  run "sudo cp -f \"$png\" /usr/share/plymouth/themes/furarcher/watermark.png"
+  run "mkdir -p \"$RCACHE\" && sudo cat \"$MCONF\" > \"$RCACHE/mkinitcpio.bak\""
+  run "sudo sh -c 'grep -q plymouth $MCONF || sed -i \"s/udev/udev plymouth/\" $MCONF'"
+  run "printf '[Daemon]\nTheme=furarcher\n' | sudo tee /etc/plymouth/plymouthd.conf >/dev/null"
+  run "sudo mkinitcpio -P" || return 1
+  echo "splash: furarcher Plymouth active next reboot (mkinitcpio rebuilt). Restore: ricer splash restore"
 }
 
 cmd_status() {
@@ -521,7 +576,7 @@ cmd_status() {
   echo "waybar dock: $(ls "$WBDIR/furarcher-dock.jsonc" 2>/dev/null || echo '(none)')"
   echo "chime: $(systemctl --user is-enabled furarcher-chime.service 2>/dev/null || echo 'off')"
   echo "grub bg: $(grep '^GRUB_BACKGROUND=' /etc/default/grub 2>/dev/null || echo '(stock)')"
-  echo "plymouth: $(plymouth-set-default-theme 2>/dev/null || echo '(plymouth missing)')"
+  echo "plymouth: $(plymouth-set-default-theme 2>/dev/null || grep -h '^Theme=' /etc/plymouth/plymouthd.conf 2>/dev/null || echo '(plymouth missing)')"
   echo "wal: $(command -v wal 2>/dev/null || echo '(not installed)')"
 }
 

@@ -69,7 +69,24 @@ check_asahi() {
   if [ "${CHECK_ONLY:-false}" = "true" ]; then exit 0; fi
 }
 
+detect_distro() { # sets DISTRO=fedora|arch (Asahi Remix vs Asahi Alarm)
+  if command -v pacman >/dev/null 2>&1; then DISTRO="arch"
+  elif command -v dnf >/dev/null 2>&1; then DISTRO="fedora"
+  else DISTRO="unknown"
+  fi
+}
+
 install_deps_asahi() {
+  detect_distro
+  if [ "$DISTRO" = "arch" ]; then
+    echo -e "${CYAN}Installing deps via pacman (Asahi Alarm / Arch)...${NC}"
+    run "sudo pacman -S --needed --noconfirm curl flatpak python-pip kitty git fastfetch nodejs npm btop tar wl-clipboard libnotify base-devel"
+    run "pip3 install --user pywal"
+    if ! command -v wal >/dev/null 2>&1 && [ -f "$HOME/.local/bin/wal" ]; then
+      echo "pywal at ~/.local/bin/wal - ensure ~/.local/bin is on PATH"
+    fi
+    return 0
+  fi
   echo -e "${CYAN}Installing deps via dnf (Fedora Asahi)...${NC}"
   # NOTE (verified 2026-09-30 in fedora:41 aarch64 container):
   #  - classic 'wget' is retired on Fedora -> use curl (already listed)
@@ -155,12 +172,34 @@ install_flatpaks_sfw() {
   echo "Reason: those flatpak bundles publish x86_64 builds; on M1 aarch64 they fail. Use GNOME Software / Flathub aarch64 builds instead."
 }
 
+install_mpvpaper_arch() {
+  # mpvpaper is AUR-only: pacman -> yay -> manual makepkg.
+  command -v mpvpaper >/dev/null 2>&1 && return 0
+  if command -v yay >/dev/null 2>&1; then
+    run "yay -S --needed --noconfirm mpvpaper || true"
+    command -v mpvpaper >/dev/null 2>&1 && return 0
+  fi
+  if command -v git >/dev/null 2>&1 && command -v makepkg >/dev/null 2>&1; then
+    echo "building mpvpaper from AUR (animated wallpapers)..."
+    run "rm -rf /tmp/mpvpaper-aur && git clone https://aur.archlinux.org/mpvpaper.git /tmp/mpvpaper-aur"
+    run "cd /tmp/mpvpaper-aur && makepkg -si --noconfirm || true"
+  else
+    echo "(mpvpaper skipped: no yay/makepkg - animated GIF bg unavailable, static only)"
+  fi
+}
+
 install_hyprland_asahi_experimental() {
   echo -e "${PINK}== Hyprland on Asahi (M1 Air) - dark + dock + macbinds ==${NC}"
   echo "Hyprland = you typed 'hyperland' - this is it (Wayland tiling compositor)."
   echo "M1 Air 2560x1664, dark mode only, macOS keybinds (SUPER=Cmd), top bar + bottom dock."
   echo "Status on Asahi Apple GPU: works for many but glitchy vs GNOME. GNOME stays installed as fallback."
   if ! ask "Continue with Hyprland install"; then return 0; fi
+  detect_distro
+  if [ "$DISTRO" = "arch" ]; then
+    echo "Arch path (Asahi Alarm): official repos + AUR fallback for mpvpaper."
+    run "sudo pacman -S --needed --noconfirm hyprland waybar wofi kitty foot mako grim slurp wl-clipboard cliphist playerctl brightnessctl librsvg imagemagick python fastfetch pipewire wireplumber polkit mate-polkit hyprpolkitagent ollama plymouth grub base-devel git curl || echo 'some pkgs missing (ok, partial install)'"
+    install_mpvpaper_arch
+  else
   # Hyprland compositor left Fedora official repos on F44+; COPR fallback.
   if ! command -v hyprland >/dev/null 2>&1; then
     run "sudo dnf install -y hyprland || true"
@@ -172,6 +211,7 @@ install_hyprland_asahi_experimental() {
     run "sudo dnf install -y hyprland hyprpaper"
   fi
   run "sudo dnf install -y waybar wofi kitty foot mate-polkit pipewire wireplumber grim slurp wl-clipboard cliphist mpvpaper playerctl brightnessctl mesa-dri-drivers mesa-vulkan-drivers glx-utils vulkan-tools librsvg2-tools || echo 'some hypr pkgs missing (ok, partial install)'"
+  fi
   run "mkdir -p $HOME/.config/hypr $HOME/.config/waybar $HOME/.config/wofi"
   run "cp -f \"$SCRIPT_DIR/config/hypr/hyprland.conf\" $HOME/.config/hypr/hyprland.conf"
   run "cp -f \"$SCRIPT_DIR/config/hypr/waybar-config.jsonc\" $HOME/.config/waybar/furarcher-top.jsonc"
