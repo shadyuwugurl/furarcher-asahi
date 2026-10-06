@@ -119,6 +119,7 @@ do_wallpaper() { # do_wallpaper <img>
   if [ "$img" != "$BGDIR/$base" ]; then
     run "cp -f \"$img\" \"$BGDIR/\""
   fi
+  case "$base" in *.png|*.jpg|*.jpeg) fit_wallpaper "$BGDIR/$base" ;; esac
   if command -v gsettings >/dev/null 2>&1; then
     run "gsettings set org.gnome.desktop.background picture-uri \"file://$BGDIR/$base\""
     run "gsettings set org.gnome.desktop.background picture-uri-dark \"file://$BGDIR/$base\""
@@ -137,11 +138,18 @@ do_wallpaper() { # do_wallpaper <img>
     esac
     if [ -n "$hp" ] && { [ -f "$hp" ] || [ "$DRY" = "true" ]; }; then
       run "mkdir -p \"$HYDIR\""
-      # hyprpaper classic syntax (0.8 rejects brace blocks): preload + monitor,path lines
+      # hyprpaper 0.8: anonymous `wallpaper {` blocks, NO '=' and NO preload line
       run "cat > \"$HYDIR/hyprpaper.conf\" <<EOF
-preload = $hp
-wallpaper = eDP-1,$hp
-wallpaper = ,$hp
+wallpaper {
+    monitor = eDP-1
+    path = $hp
+    fit_mode = cover
+}
+wallpaper {
+    monitor =
+    path = $hp
+    fit_mode = cover
+}
 splash = false
 ipc = on
 EOF"
@@ -324,6 +332,22 @@ cmd_wallpapers() {
   echo "bundled SFW wallpapers ($ROOT/wallpapers):"
   ls -1 "$ROOT/wallpapers" 2>/dev/null | sed 's/^/  /' || echo "  (none)"
   echo "use: ricer wallpaper <file> | ricer mood <name> | ricer apply [IMAGE] [theme]"
+}
+
+fit_wallpaper() { # fit_wallpaper <file> — downscale raster wider than 1920px (hyprpaper blacks out huge images on Asahi)
+  f="$1"
+  if [ "$DRY" = "true" ]; then return 0; fi
+  [ -f "$f" ] || return 0
+  w=""
+  if command -v identify >/dev/null 2>&1; then w=$(identify -format "%w" "$f" 2>/dev/null || echo ""); fi
+  case "$w" in ''|*[!0-9]*) return 0 ;; esac
+  if [ "$w" -gt 1920 ]; then
+    if command -v magick >/dev/null 2>&1; then magick "$f" -resize "1920x>" "$f" || return 1
+    elif command -v convert >/dev/null 2>&1; then convert "$f" -resize "1920x>" "$f" || return 1
+    elif command -v ffmpeg >/dev/null 2>&1; then ffmpeg -y -v error -i "$f" -vf "scale=1920:-1" "${f}.fit.png" && mv -f "${f}.fit.png" "$f" || return 1
+    else echo "(image ${w}px wide but no resizer found - hyprpaper may show it black; install imagemagick: sudo dnf install -y ImageMagick)"; fi
+    echo "resized wallpaper to 1920px wide for hyprpaper"
+  fi
 }
 
 to_png() { # to_png <svg> <width> <out.png> — rsvg -> inkscape -> convert -> stdlib fallback

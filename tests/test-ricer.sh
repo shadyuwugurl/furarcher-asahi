@@ -134,7 +134,7 @@ done
 "./bin/furfetch" mlm >/dev/null 2>&1 && pass "furfetch mlm" || fail "furfetch mlm"
 "./bin/furfetch" gaylove >/dev/null 2>&1 && pass "furfetch gaylove" || fail "furfetch gaylove"
 python3 -c "import json; [json.load(open(f)) for f in ['hypr/waybar-config.jsonc','hypr/waybar-dock.jsonc']]" 2>/dev/null && pass "waybar json valid" || fail "waybar json valid"
-grep -q "^wallpaper = eDP-1," bin/ricer && pass "hyprpaper classic syntax" || fail "hyprpaper classic syntax"
+! grep -q "^wallpaper = eDP-1," bin/ricer && pass "hyprpaper no legacy syntax" || fail "hyprpaper no legacy syntax"
 
 # --- boot: chime/grub/splash (stubbed sudo/system services, isolated HOME) ---
 printf '#!/bin/bash\necho "sudo $*" >> "$TESTHOME/calls.log"\n' > "$STUBBIN/sudo"
@@ -143,8 +143,10 @@ printf '#!/bin/bash\necho "ffplay $*" >> "$TESTHOME/calls.log"\n' > "$STUBBIN/ff
 printf '#!/bin/bash\necho "grub2-mkconfig $*" >> "$TESTHOME/calls.log"\n' > "$STUBBIN/grub2-mkconfig"
 printf '#!/bin/bash\necho "hyprpaper $*" >> "$TESTHOME/calls.log"\n' > "$STUBBIN/hyprpaper"
 printf '#!/bin/bash\necho "hyprctl $*" >> "$TESTHOME/calls.log"\n' > "$STUBBIN/hyprctl"
+printf '#!/bin/bash\necho "${IDENT_W:-800}"\n' > "$STUBBIN/identify"
+printf '#!/bin/bash\necho "convert $*" >> "$TESTHOME/calls.log"\n' > "$STUBBIN/convert"
 printf '#!/bin/bash\nif [ $# -eq 0 ]; then echo spinner; else echo "plymouth-set-default-theme $*" >> "$TESTHOME/calls.log"; fi\n' > "$STUBBIN/plymouth-set-default-theme"
-chmod +x "$STUBBIN/sudo" "$STUBBIN/systemctl" "$STUBBIN/ffplay" "$STUBBIN/grub2-mkconfig" "$STUBBIN/hyprpaper" "$STUBBIN/hyprctl" "$STUBBIN/plymouth-set-default-theme"
+chmod +x "$STUBBIN/sudo" "$STUBBIN/systemctl" "$STUBBIN/ffplay" "$STUBBIN/grub2-mkconfig" "$STUBBIN/hyprpaper" "$STUBBIN/hyprctl" "$STUBBIN/identify" "$STUBBIN/convert" "$STUBBIN/plymouth-set-default-theme"
 export PLYMOUTH_THEMES_DIR="$TESTHOME/themes"
 mkdir -p "$PLYMOUTH_THEMES_DIR/spinner"
 echo "fake" > "$PLYMOUTH_THEMES_DIR/spinner/watermark.png"
@@ -195,9 +197,17 @@ grep -q "plymouth-set-default-theme -R furarcher" "$TESTHOME/calls.log" && pass 
 "$R" splash restore >/dev/null && pass "splash restore" || fail "splash restore"
 "$R" status | grep -q "chime:" && pass "status boot lines" || fail "status boot lines"
 "$R" wallpaper "$TESTHOME/test.png" >/dev/null && grep -q "test.png" "$TESTHOME/.config/hypr/hyprpaper.conf" && pass "hyprpaper conf" || fail "hyprpaper conf"
+grep -q "^wallpaper {$" "$TESTHOME/.config/hypr/hyprpaper.conf" && pass "hyprpaper block syntax" || fail "hyprpaper block syntax"
+! grep -q "preload" "$TESTHOME/.config/hypr/hyprpaper.conf" && pass "hyprpaper no preload" || fail "hyprpaper no preload"
 grep -q "hyprctl hyprpaper wallpaper" "$TESTHOME/calls.log" && pass "hyprpaper reload" || fail "hyprpaper reload"
 "$R" wallpaper "./wallpapers/fur-pride-2560x1664.svg" >/dev/null && grep -q ".hyprpaper.png" "$TESTHOME/.config/hypr/hyprpaper.conf" && pass "hyprpaper svg render" || fail "hyprpaper svg render"
 "$R" wallpaper "$TESTHOME/.local/share/backgrounds/test.png" >/dev/null 2>&1 && pass "wallpaper same-file ok" || fail "wallpaper same-file ok"
+: > "$TESTHOME/calls.log"
+IDENT_W=4000 "$R" wallpaper "$TESTHOME/test.png" >/dev/null
+grep -q "convert.*-resize" "$TESTHOME/calls.log" && pass "fit resize big" || fail "fit resize big"
+: > "$TESTHOME/calls.log"
+IDENT_W=800 "$R" wallpaper "$TESTHOME/test.png" >/dev/null
+grep -q "convert" "$TESTHOME/calls.log" && fail "fit skip small" || pass "fit skip small"
 rm -f "$TESTHOME/.local/share/furarcher/grub-bg.png"
 "$R" grub boykisser --dry-run >/dev/null
 [ ! -f "$TESTHOME/.local/share/furarcher/grub-bg.png" ] && pass "grub dry-run clean" || fail "grub dry-run clean"
