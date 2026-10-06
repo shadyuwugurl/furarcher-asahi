@@ -1,0 +1,30 @@
+[Plymouth Theme]
+Name=Furarcher
+Description=Boykisser-dark boot splash (two-step, modeled on stock spinner).
+ModuleName=two-step
+
+[two-step]
+Font=Cantarell 12
+TitleFont=Cantarell Light 30
+ImageDir=/usr/share/plymouth/themes/furarcher
+DialogHorizontalAlignment=.5
+DialogVerticalAlignment=.382
+TitleHorizontalAlignment=.5
+TitleVerticalAlignment=.382
+HorizontalAlignment=.5
+VerticalAlignment=.7
+WatermarkHorizontalAlignment=.5
+WatermarkVerticalAlignment=.96
+Transition=none
+TransitionDuration=0.0
+BackgroundStartColor=0x1a0e1a
+BackgroundEndColor=0x0e1a2b
+ProgressBarBackgroundColor=0x444444
+ProgressBarForegroundColor=0xff7ad9
+MessageBelowAnimation=true
+
+[boot-up]
+UseEndAnimation=false
+
+[shutdown]
+UseEndAnimation=false

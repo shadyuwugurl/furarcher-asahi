@@ -62,6 +62,28 @@ Installs Hyprland + waybar/wofi/kitty/mate-polkit from **official Fedora repos**
 ./bin/ricer gpu     # Asahi AGX Mesa check + honest ANE note
 ```
 
+## Boot: chime + GRUB art + Plymouth splash
+
+Firmware honesty first: the power-on **Apple logo** and **Mac chime** play from
+Apple firmware before Linux loads — no Linux tool can change them (muting the
+Mac chime needs macOS NVRAM). Everything *after* firmware is themeable:
+
+```bash
+./bin/ricer chime boykisser  # login chime (synthesized WAV, user service, no sudo)
+./bin/ricer chime off        # silence it
+./bin/ricer grub boykisser   # GRUB menu background (sudo, backup, grub2-mkconfig)
+./bin/ricer grub restore
+./bin/ricer splash boykisser # Plymouth boot splash, Fedora logo -> boykisser
+                             # (sudo + initramfs rebuild, backup kept)
+./bin/ricer splash restore
+```
+
+The Plymouth theme (`plymouth/furarcher.plymouth`) is `two-step`, key-for-key
+compatible with Fedora's stock spinner theme, with boykisser-dark colors and a
+pink progress bar. PNG rendering prefers `rsvg-convert`/`inkscape`/`convert`
+and falls back to a stdlib gradient (`sudo dnf install -y librsvg2-tools` for
+full art).
+
 ## Web fetch (SFW only, 5 providers + full-auto)
 
 `ricer find` hits **wallhaven** (`purity=100` SFW-only) + **nekos.best**

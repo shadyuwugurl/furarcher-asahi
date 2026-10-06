@@ -230,6 +230,18 @@ if ask "Install macOS WhiteSur theme (traffic lights, needs network)"; then
   run "chmod +x \"$SCRIPT_DIR/bin/ricer\""
   run "\"$SCRIPT_DIR/bin/ricer\" mactheme || true"
 fi
+if ask "Install login chime (boykisser synth, no sudo)"; then
+  run "chmod +x \"$SCRIPT_DIR/bin/ricer\""
+  run "\"$SCRIPT_DIR/bin/ricer\" chime || true"
+fi
+if ask "Set GRUB menu art (sudo, backup kept)"; then
+  run "chmod +x \"$SCRIPT_DIR/bin/ricer\""
+  run "\"$SCRIPT_DIR/bin/ricer\" grub || true"
+fi
+if ask "Set Plymouth boot splash (sudo + initramfs rebuild)"; then
+  run "chmod +x \"$SCRIPT_DIR/bin/ricer\""
+  run "\"$SCRIPT_DIR/bin/ricer\" splash || true"
+fi
 if ask "Show GPU/ANE status (Asahi AGX check)"; then
   run "chmod +x \"$SCRIPT_DIR/bin/ricer\""
   run "\"$SCRIPT_DIR/bin/ricer\" gpu || true"

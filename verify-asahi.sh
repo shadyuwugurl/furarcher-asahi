@@ -47,4 +47,10 @@ echo "### voice (optional)"
 command -v piper >/dev/null || python3 -c "import piper" 2>/dev/null && ok "piper" || warn "piper not installed (optional)"
 [ -x "$HOME/.local/bin/whisper-cli" ] && ok "whisper-cli" || warn "whisper-cli not installed (optional)"
 
+echo "### boot theming"
+ricer status 2>&1 | grep -E "chime:|grub bg:|plymouth:" || warn "ricer status boot lines missing"
+systemctl --user is-enabled furarcher-chime.service 2>&1 || warn "login chime not enabled (ricer chime)"
+grep -q '^GRUB_BACKGROUND=' /etc/default/grub 2>/dev/null && ok "grub art set" || warn "stock grub background"
+plymouth-set-default-theme 2>/dev/null | grep -q furarcher && ok "furarcher plymouth" || warn "stock plymouth theme"
+
 echo "=== RESULT: $PASS pass, $FAIL fail, $WARN warn ==="

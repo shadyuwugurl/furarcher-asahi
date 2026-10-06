@@ -13,6 +13,12 @@
 #   ricer macbinds           install Hyprland macOS keybinds + GNOME mac-ish tweaks (safe)
 #   ricer mactheme           install WhiteSur-Dark GTK (mac traffic lights, needs network)
 #   ricer gpu                Asahi GPU/ANE status: Mesa AGX check + honest ANE note
+#   ricer chime [mood|off]   login chime (synthesized WAV, user systemd unit, no sudo)
+#   ricer grub [mood|restore]  GRUB menu art (sudo, backup kept)
+#   ricer splash [mood|restore] Plymouth boot splash (sudo + initramfs rebuild)
+#     Firmware limits: power-on Apple logo + chime are Apple firmware (pre-Linux,
+#     unchangeable from Linux). These commands theme everything after: GRUB,
+#     Plymouth splash, login chime.
 #   ricer auto <mood>          fully automatic: web search -> top hit -> full rice (fallback: bundled)
 #   ricer find <query> [n] [--source=all|wallhaven|nekos|waifu|safebooru|openverse]  SFW web search (5 providers)
 #   ricer get <n> [--apply[=theme]]  download result n (image-validated, logged)
@@ -259,18 +265,23 @@ do_gpu() {
   echo "  On 8GB M1 Air keep models <=8B Q4 (e.g. hermes3:8b) to avoid OOM."
 }
 
+mood_svg() { # mood -> bundled wallpaper svg
+  case "$1" in
+    boykisser|midnight) echo "$ROOT/wallpapers/boykisser-dark-2560x1664.svg" ;;
+    mlm|achillean) echo "$ROOT/wallpapers/boykisser-mlm-2560x1664.svg" ;;
+    furry|bear) echo "$ROOT/wallpapers/furry-paws-night-2560x1664.svg" ;;
+    femboy) echo "$ROOT/wallpapers/fur-pride-2560x1664.svg" ;;
+    gaylove) echo "$ROOT/wallpapers/gaylove-sunset-2560x1664.svg" ;;
+    *) echo "$ROOT/wallpapers/boykisser-dark-2560x1664.svg" ;;
+  esac
+}
+
 do_mood() { # do_mood <name> — wallpaper + theme preset, SFW
   case "$1" in
-    boykisser) do_wallpaper "$ROOT/wallpapers/boykisser-dark-2560x1664.svg" && do_theme "boykisser" ;;
-    mlm)       do_wallpaper "$ROOT/wallpapers/boykisser-mlm-2560x1664.svg" && do_theme "mlm" ;;
-    furry)     do_wallpaper "$ROOT/wallpapers/furry-paws-night-2560x1664.svg" && do_theme "paw" ;;
-    femboy)    do_wallpaper "$ROOT/wallpapers/fur-pride-2560x1664.svg" && do_theme "femboy" ;;
-    gaylove)   do_wallpaper "$ROOT/wallpapers/gaylove-sunset-2560x1664.svg" && do_theme "honey" ;;
-    midnight)  do_wallpaper "$ROOT/wallpapers/boykisser-dark-2560x1664.svg" && do_theme "midnight" ;;
-    bear)      do_wallpaper "$ROOT/wallpapers/furry-paws-night-2560x1664.svg" && do_theme "bear" ;;
-    achillean) do_wallpaper "$ROOT/wallpapers/boykisser-mlm-2560x1664.svg" && do_theme "achillean" ;;
+    boykisser|mlm|furry|femboy|gaylove|midnight|bear|achillean) ;;
     *) echo "unknown mood: $1 (boykisser|mlm|furry|femboy|gaylove|midnight|bear|achillean)" >&2; return 1 ;;
   esac
+  do_wallpaper "$(mood_svg "$1")" && do_theme "$(mood_theme "$1")" || return 1
   do_darkmode >/dev/null
   echo "mood: $1 ^_^"
 }
@@ -294,6 +305,123 @@ cmd_wallpapers() {
   echo "use: ricer wallpaper <file> | ricer mood <name> | ricer apply [IMAGE] [theme]"
 }
 
+to_png() { # to_png <svg> <width> <out.png> — rsvg -> inkscape -> convert -> stdlib fallback
+  svg="$1"; w="$2"; out="$3"
+  if [ "$DRY" = "true" ]; then echo "[dry-run] render $svg (${w}px) -> $out"; return 0; fi
+  mkdir -p "$(dirname "$out")"
+  if command -v rsvg-convert >/dev/null 2>&1; then
+    rsvg-convert -w "$w" -o "$out" "$svg" 2>/dev/null && [ -s "$out" ] && return 0
+  fi
+  if command -v inkscape >/dev/null 2>&1; then
+    inkscape --export-type=png --export-filename="$out" -w "$w" "$svg" >/dev/null 2>&1 \
+      && [ -s "$out" ] && return 0
+  fi
+  if command -v convert >/dev/null 2>&1; then
+    convert -background none -resize "${w}x" "$svg" "$out" >/dev/null 2>&1 \
+      && [ -s "$out" ] && return 0
+  fi
+  if python3 "$ROOT/plymouth/svg-to-png.py" "$w" "$out" 2>/dev/null; then
+    echo "note: no SVG converter found - stdlib gradient fallback (no art detail)."
+    echo "  for full art: sudo dnf install -y librsvg2-tools   (rsvg-convert)"
+    return 0
+  fi
+  echo "PNG render failed (no converter and stdlib fallback failed)"; return 1
+}
+
+do_chime() { # chime [boykisser|mlm|off] — login chime via user systemd unit (no sudo)
+  m="${1:-boykisser}"
+  if [ "$m" = "off" ]; then
+    run "systemctl --user disable --now furarcher-chime.service || true"
+    echo "chime: off"
+    return 0
+  fi
+  case "$m" in boykisser|mlm) ;;
+    *) echo "unknown chime: $m (boykisser|mlm|off)" >&2; return 1 ;;
+  esac
+  command -v python3 >/dev/null || { echo "need python3"; return 1; }
+  run "mkdir -p \"$HOME/.local/share/sounds\" \"$HOME/.config/systemd/user\""
+  wav="$HOME/.local/share/sounds/furarcher-chime-$m.wav"
+  run "python3 \"$ROOT/sounds/make-chime.py\" \"$m\" \"$wav\"" || return 1
+  player=""
+  for p in pw-play paplay; do
+    if command -v "$p" >/dev/null 2>&1; then player="$(command -v "$p")"; break; fi
+  done
+  if [ -z "$player" ]; then
+    if command -v ffplay >/dev/null 2>&1; then player="$(command -v ffplay) -nodisp -autoexit -loglevel quiet"
+    else
+      echo "warn: no audio player (pw-play/paplay/ffplay) - unit installed anyway;"
+      echo "  sudo dnf install -y pipewire-utils   (pw-play)"
+      player="/usr/bin/pw-play"
+    fi
+  fi
+  run "cat > \"$HOME/.config/systemd/user/furarcher-chime.service\" <<EOF
+[Unit]
+Description=Furarcher login chime ($m)
+After=pipewire.service pipewire-pulse.service
+[Service]
+Type=oneshot
+ExecStart=$player $wav
+[Install]
+WantedBy=graphical-session.target
+EOF"
+  run "systemctl --user daemon-reload || echo '(no user bus - enable manually: systemctl --user enable furarcher-chime)'"
+  run "systemctl --user enable furarcher-chime.service || true"
+  if [ "$DRY" != "true" ] && [ -f "$wav" ]; then
+    echo "preview (best-effort):"
+    $player "$wav" 2>/dev/null || true
+  fi
+  echo "chime: $m installed (plays at graphical login)"
+}
+
+do_grub() { # grub [mood|restore] — GRUB menu background (sudo, backup kept)
+  if [ "${1:-}" = "restore" ]; then
+    [ -f "$RCACHE/grub.bak" ] || { echo "no GRUB backup (run 'ricer grub <mood>' first)"; return 1; }
+    run "sudo cp -f \"$RCACHE/grub.bak\" /etc/default/grub" || return 1
+    run "sudo grub2-mkconfig -o /boot/grub2/grub.cfg" || return 1
+    echo "grub: restored stock background"
+    return 0
+  fi
+  mood="${1:-boykisser}"
+  case "$mood" in boykisser|mlm|furry|femboy|gaylove|midnight|bear|achillean) ;;
+    *) echo "unknown mood: $mood" >&2; return 1 ;;
+  esac
+  command -v grub2-mkconfig >/dev/null 2>&1 || { echo "need grub2 (Asahi Fedora has it; else sudo dnf install -y grub2-tools)"; return 1; }
+  png="$RCACHE/grub-bg.png"
+  to_png "$(mood_svg "$mood")" 1920 "$png" || return 1
+  run "sudo cp -n /etc/default/grub /etc/default/grub.furarcher-bak"
+  run "mkdir -p \"$RCACHE\" && sudo cat /etc/default/grub > \"$RCACHE/grub.bak\""
+  run "sudo sed -i '/^GRUB_BACKGROUND=/d' /etc/default/grub"
+  run "sudo sh -c 'echo GRUB_BACKGROUND=/boot/grub2/furarcher-bg.png >> /etc/default/grub'"
+  run "sudo cp -f \"$png\" /boot/grub2/furarcher-bg.png" || return 1
+  run "sudo grub2-mkconfig -o /boot/grub2/grub.cfg" || return 1
+  echo "grub: boykisser menu art active next reboot. Restore: ricer grub restore"
+}
+
+do_splash() { # splash [mood|restore] — Plymouth boot splash (sudo + initramfs rebuild)
+  if [ "${1:-}" = "restore" ]; then
+    [ -f "$RCACHE/plymouth-backup" ] || { echo "no Plymouth backup (run 'ricer splash <mood>' first)"; return 1; }
+    run "sudo plymouth-set-default-theme -R \"$(cat "$RCACHE/plymouth-backup")\"" || return 1
+    echo "splash: restored to $(cat "$RCACHE/plymouth-backup")"
+    return 0
+  fi
+  mood="${1:-boykisser}"
+  case "$mood" in boykisser|mlm|furry|femboy|gaylove|midnight|bear|achillean) ;;
+    *) echo "unknown mood: $mood" >&2; return 1 ;;
+  esac
+  command -v plymouth-set-default-theme >/dev/null 2>&1 || { echo "need plymouth: sudo dnf install -y plymouth plymouth-theme-spinner"; return 1; }
+  SDIR="${PLYMOUTH_THEMES_DIR:-/usr/share/plymouth/themes}"
+  [ -d "$SDIR/spinner" ] || { echo "need stock spinner assets: sudo dnf install -y plymouth-theme-spinner"; return 1; }
+  png="$RCACHE/splash-watermark.png"
+  to_png "$(mood_svg "$mood")" 480 "$png" || return 1
+  run "sudo mkdir -p /usr/share/plymouth/themes/furarcher"
+  run "sudo cp -f /usr/share/plymouth/themes/spinner/*.png /usr/share/plymouth/themes/furarcher/"
+  run "sudo cp -f \"$ROOT/plymouth/furarcher.plymouth\" /usr/share/plymouth/themes/furarcher/"
+  run "sudo cp -f \"$png\" /usr/share/plymouth/themes/furarcher/watermark.png"
+  run "plymouth-set-default-theme > \"$RCACHE/plymouth-backup\""
+  run "sudo plymouth-set-default-theme -R furarcher" || return 1
+  echo "splash: furarcher Plymouth active next reboot (initramfs rebuilt). Restore: ricer splash restore"
+}
+
 cmd_status() {
   echo "DE: ${XDG_CURRENT_DESKTOP:-unknown} | session: ${XDG_SESSION_TYPE:-unknown}"
   echo "mood: boykisser + gay boys + furries + femboys (SFW dark)"
@@ -305,6 +433,9 @@ cmd_status() {
   echo "hypr colors: $(ls "$HYDIR/furarcher-colors.conf" 2>/dev/null || echo '(none)')"
   echo "waybar top: $(ls "$WBDIR/furarcher-top.jsonc" 2>/dev/null || echo '(none)')"
   echo "waybar dock: $(ls "$WBDIR/furarcher-dock.jsonc" 2>/dev/null || echo '(none)')"
+  echo "chime: $(systemctl --user is-enabled furarcher-chime.service 2>/dev/null || echo 'off')"
+  echo "grub bg: $(grep '^GRUB_BACKGROUND=' /etc/default/grub 2>/dev/null || echo '(stock)')"
+  echo "plymouth: $(plymouth-set-default-theme 2>/dev/null || echo '(plymouth missing)')"
   echo "wal: $(command -v wal 2>/dev/null || echo '(not installed)')"
 }
 
@@ -572,11 +703,14 @@ case "${1:-status}" in
   macbinds) do_macbinds ;;
   mactheme) do_mactheme ;;
   gpu) do_gpu ;;
+  chime) shift; do_chime "${1:-boykisser}" ;;
+  grub) shift; do_grub "${1:-boykisser}" ;;
+  splash) shift; do_splash "${1:-boykisser}" ;;
   find) shift; [ $# -ge 1 ] || { echo 'usage: ricer find <query> [count] [--source=all|wallhaven|nekos|waifu|safebooru|openverse]'; exit 1; }; cmd_find "$@" ;;
   "get") shift; [ $# -ge 1 ] || { echo 'usage: ricer get <n> [--apply[=theme]]'; exit 1; }; cmd_get "$@" ;;
   preview) shift; [ $# -ge 1 ] || { echo 'usage: ricer preview <n>'; exit 1; }; cmd_preview "$@" ;;
   fetch-pack) shift; [ $# -ge 1 ] || { echo 'usage: ricer fetch-pack <boykisser|mlm|furry|femboy|gaylove|midnight|bear|achillean> [n]'; exit 1; }; cmd_fetchpack "$@" ;;
   auto) shift; cmd_auto "${1:-boykisser}" ;;
   status) cmd_status ;;
-  *) echo "usage: ricer {apply [IMAGE] [theme]|wallpaper|theme|themes|mood|love|wallpapers|darkmode|dock|macbinds|mactheme|gpu|find|get|preview|fetch-pack|auto|status} [--dry-run]"; exit 1 ;;
+  *) echo "usage: ricer {apply [IMAGE] [theme]|wallpaper|theme|themes|mood|love|wallpapers|darkmode|dock|macbinds|mactheme|gpu|chime|grub|splash|find|get|preview|fetch-pack|auto|status} [--dry-run]"; exit 1 ;;
 esac
