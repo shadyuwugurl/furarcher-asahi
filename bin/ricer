@@ -681,8 +681,10 @@ cmd_auto() { # auto <mood> — fully automatic: web search -> top hit -> full ri
 
 case "${1:-status}" in
   apply)
-    img="${2:-$ROOT/wallpapers/boykisser-dark-2560x1664.svg}"
-    theme="${3:-boykisser}"
+    img=""; theme=""
+    for a in "${2:-}" "${3:-}"; do case "$a" in ""|--*) ;; *) if [ -z "$img" ]; then img="$a"; else theme="$a"; fi ;; esac; done
+    img="${img:-$ROOT/wallpapers/boykisser-dark-2560x1664.svg}"
+    theme="${theme:-boykisser}"
     do_wallpaper "$img" && do_theme "$theme" || exit 1
     do_darkmode
     do_dock
@@ -696,21 +698,21 @@ case "${1:-status}" in
   theme) shift; [ $# -ge 1 ] || { echo 'usage: ricer theme <name> (see: ricer themes)'; exit 1; }; do_theme "$1" ;;
   themes) cmd_themes ;;
   mood) shift; [ $# -ge 1 ] || { echo 'usage: ricer mood <boykisser|mlm|furry|femboy|gaylove|midnight|bear|achillean>'; exit 1; }; do_mood "$1" ;;
-  love) shift; do_love "${1:-gaylove}" ;;
+  love) shift; a="${1:-}"; case "$a" in --*) a="";; esac; do_love "${a:-gaylove}" ;;
   wallpapers) cmd_wallpapers ;;
   darkmode) do_darkmode ;;
   dock) do_dock ;;
   macbinds) do_macbinds ;;
   mactheme) do_mactheme ;;
   gpu) do_gpu ;;
-  chime) shift; do_chime "${1:-boykisser}" ;;
-  grub) shift; do_grub "${1:-boykisser}" ;;
-  splash) shift; do_splash "${1:-boykisser}" ;;
+  chime) shift; a="${1:-}"; case "$a" in --*) a="";; esac; do_chime "${a:-boykisser}" ;;
+  grub) shift; a="${1:-}"; case "$a" in --*) a="";; esac; do_grub "${a:-boykisser}" ;;
+  splash) shift; a="${1:-}"; case "$a" in --*) a="";; esac; do_splash "${a:-boykisser}" ;;
   find) shift; [ $# -ge 1 ] || { echo 'usage: ricer find <query> [count] [--source=all|wallhaven|nekos|waifu|safebooru|openverse]'; exit 1; }; cmd_find "$@" ;;
   "get") shift; [ $# -ge 1 ] || { echo 'usage: ricer get <n> [--apply[=theme]]'; exit 1; }; cmd_get "$@" ;;
   preview) shift; [ $# -ge 1 ] || { echo 'usage: ricer preview <n>'; exit 1; }; cmd_preview "$@" ;;
   fetch-pack) shift; [ $# -ge 1 ] || { echo 'usage: ricer fetch-pack <boykisser|mlm|furry|femboy|gaylove|midnight|bear|achillean> [n]'; exit 1; }; cmd_fetchpack "$@" ;;
-  auto) shift; cmd_auto "${1:-boykisser}" ;;
+  auto) shift; a="${1:-}"; case "$a" in --*) a="";; esac; cmd_auto "${a:-boykisser}" ;;
   status) cmd_status ;;
   *) echo "usage: ricer {apply [IMAGE] [theme]|wallpaper|theme|themes|mood|love|wallpapers|darkmode|dock|macbinds|mactheme|gpu|chime|grub|splash|find|get|preview|fetch-pack|auto|status} [--dry-run]"; exit 1 ;;
 esac

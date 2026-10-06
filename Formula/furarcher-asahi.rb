@@ -9,10 +9,13 @@ class FurarcherAsahi < Formula
 
   def install
     libexec.install Dir["*"] - ["Formula"]
+    # wrappers (not symlinks): $0-based payload lookup breaks under Cellar,
+    # so every entry point gets FURARCHER_ROOT=libexec explicitly.
     (bin/"furarcher").write_env_script libexec/"furarcher.sh", FURARCHER_ROOT: libexec
-    bin.install_symlink libexec/"bin/furfetch"
-    bin.install_symlink libexec/"bin/ricer"
-    bin.install_symlink libexec/"furassistant/bin/furassistant"
+    (bin/"furfetch").write_env_script libexec/"bin/furfetch", FURARCHER_ROOT: libexec
+    (bin/"ricer").write_env_script libexec/"bin/ricer", FURARCHER_ROOT: libexec
+    (bin/"furassistant").write_env_script libexec/"furassistant/bin/furassistant", FURARCHER_ROOT: libexec
+    (bin/"macrice").write_env_script libexec/"macos/macrice.sh", FURARCHER_ROOT: libexec
   end
 
   def caveats

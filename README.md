@@ -32,6 +32,23 @@ chmod +x furarcher.sh bin/furfetch
 ./furarcher.sh --hyprland     # Hyprland on Asahi
 ```
 
+## macOS side (same Mac, booted to macOS)
+
+`macos/macrice.sh` rices macOS itself — user-scope only, no SIP issues, full
+backup + `--restore`. Keybinds need no work (macOS is already Cmd-native).
+
+```bash
+./macos/macrice.sh mlm --check-only  # read-only: shows current settings
+./macos/macrice.sh mlm --dry-run     # prints every change, writes nothing
+./macos/macrice.sh boykisser         # interactive apply (asks per section)
+```
+
+Applies: dark mode + pink accent, boykisser wallpaper (sips-rendered),
+Dock behavior (your apps untouched), Finder bits, fast key repeat +
+tap-to-click + natural scroll, screenshot prefs, login chime (afplay
+LaunchAgent), kitty theme. Firmware limits: the boot Apple logo and the
+built-in startup chime cannot be replaced (script offers sudo-nvram mute only).
+
 ## Hyprland (“hyperland”) — dark + dock + macbinds
 
 Run `./furarcher.sh` and pick `2`, or `./furarcher.sh --hyprland`.

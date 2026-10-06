@@ -93,6 +93,10 @@ export WALLHAVEN_BASE="http://127.0.0.1:11441" NEKOS_BASE="http://127.0.0.1:1144
 "$R" preview 1 | grep -q "http" && pass "preview url" || fail "preview url"
 "$R" fetch-pack boykisser 2 2>&1 | grep -q "pack:" && pass "fetch-pack" || fail "fetch-pack"
 "$R" fetch-pack bogus 2 >/dev/null 2>&1 && fail "bad pack rejected" || pass "bad pack rejected"
+rm -f "$TESTHOME/.local/share/backgrounds/test.png"
+"$R" apply "$TESTHOME/test.png" pink --dry-run >/dev/null
+[ ! -f "$TESTHOME/.local/share/backgrounds/test.png" ] && pass "apply dry-run clean" || fail "apply dry-run clean"
+"$R" auto --dry-run 2>&1 | grep -q "auto-riced" && pass "auto flag-first" || fail "auto flag-first"
 "$R" get 9 >/dev/null 2>&1 && fail "bad index rejected" || pass "bad index rejected"
 WALLHAVEN_BASE="http://127.0.0.1:9" NEKOS_BASE="http://127.0.0.1:9" WAIFU_BASE="http://127.0.0.1:9" SAFEBOORU_BASE="http://127.0.0.1:9" OPENVERSE_BASE="http://127.0.0.1:9" "$R" find fox 2 2>&1 | grep -q "no results" && pass "find graceful" || fail "find graceful"
 "$R" fetch-pack gaylove 2 --apply-first >/dev/null 2>&1 && grep -q "ff9e5e" "$TESTHOME/.config/kitty/furarcher-theme.conf" && pass "fetch-pack gaylove apply-first (honey)" || fail "fetch-pack gaylove apply-first (honey)"
